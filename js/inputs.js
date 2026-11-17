@@ -4,6 +4,7 @@ import { esc, fileToJpeg, toast } from "./fb.js";
 import { BUILTIN, funOptions, qTitle, qIcon } from "./questions.js";
 import { PUZZLES } from "./puzzles.js";
 import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js";
+import { countFlowersOnDevice, sampleColor } from "./flowercount.js";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -158,7 +159,7 @@ R.quadrat = (el, q, { prev, config }) => {
   const area = Number(config.quadratArea) || 20;
   const st = {
     photo: prev?.photo || "", aiCount: prev?.aiCount ?? "", aiPoints: prev?.aiPoints || [],
-    aiManual: !!prev?.aiManual, basis: prev?.basis || ""
+    aiManual: !!prev?.aiManual, basis: prev?.basis || "", aiBy: prev?.aiBy || ""
   };
   el.innerHTML = `
     <div class="steps">
@@ -192,8 +193,23 @@ R.quadrat = (el, q, { prev, config }) => {
   const drawAi = (state) => {
     if (state === "busy") { aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요…</div>`; return; }
     if (st.photo && !st.aiManual && st.aiCount !== "") {
-      aiBox.innerHTML = `${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}
-        <div class="muted" style="margin-top:6px">빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>`;
+      const byTxt = st.aiBy === "device" ? "📱 휴대폰 AI가 꽃 색깔로 셌어요" : "🤖 Gemini AI가 셌어요";
+      aiBox.innerHTML = `<div class="tapzone" style="cursor:crosshair">${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}</div>
+        <div class="muted" style="margin-top:6px"><b>${byTxt}</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>
+        <div class="row wrap" style="margin-top:8px;gap:6px">
+          ${st.aiBy === "device" ? `<span class="muted">꽃을 잘 못 찾았다면 👉 사진에서 <b>꽃 한 송이를 톡</b> 눌러 꽃 색을 알려 주세요.</span>` : ""}
+          ${st.aiBy !== "device" ? `<button type="button" class="btn small gray" data-dev>📱 휴대폰 AI로도 세어 보기</button>` : ""}
+          ${st.aiBy === "device" && config.gasUrl && aiMode !== "device" ? `<button type="button" class="btn small gray" data-retry>🤖 Gemini에게 다시 물어보기</button>` : ""}
+        </div>`;
+      aiBox.querySelector("[data-retry]")?.addEventListener("click", askAi);
+      aiBox.querySelector("[data-dev]")?.addEventListener("click", () => askDevice());
+      if (st.aiBy === "device") {
+        aiBox.querySelector(".tapzone img").addEventListener("click", async (e) => {
+          const r = e.target.getBoundingClientRect();
+          const rgb = await sampleColor(st.photo, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+          askDevice(rgb);
+        });
+      }
       return;
     }
     const manual = st.aiManual || state === "fail";
@@ -229,22 +245,42 @@ R.quadrat = (el, q, { prev, config }) => {
       };
     };
   };
-  async function askAi() {
-    if (!st.photo) return;
-    if (!config.gasUrl) { st.aiManual = true; drawAi("fail"); return; }
+  // AI 방식: auto = Gemini 먼저, 안 되면 휴대폰 AI / device = 휴대폰 AI만 / gemini = Gemini만
+  const aiMode = config.aiMode || "auto";
+  async function askDevice(pickRGB = null) {
     drawAi("busy");
     try {
-      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 45000);
+      const r = await countFlowersOnDevice(st.photo, { pickRGB });
+      st.aiCount = String(r.count); st.aiPoints = r.points; st.aiManual = false; st.aiBy = "device";
+      drawAi(); formula();
+      if (pickRGB) toast(`고른 색으로 다시 셌어요: ${r.count}송이`);
+    } catch (err) {
+      console.warn(err);
+      st.aiManual = true; drawAi("fail");
+    }
+  }
+  async function askGemini() {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
+    try {
       const res = await fetch(config.gasUrl, {
         method: "POST", body: JSON.stringify({ image: st.photo.split(",")[1] }), signal: ctl.signal
       });
-      clearTimeout(tm);
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || "fail");
-      st.aiCount = String(j.count); st.aiPoints = j.points || []; st.aiManual = false;
+      return j;
+    } finally { clearTimeout(tm); }
+  }
+  async function askAi() {
+    if (!st.photo) return;
+    if (aiMode === "device" || !config.gasUrl) return askDevice();
+    drawAi("busy");
+    try {
+      const j = await askGemini();
+      st.aiCount = String(j.count); st.aiPoints = j.points || []; st.aiManual = false; st.aiBy = "gemini";
       drawAi(); formula();
     } catch (err) {
-      console.warn(err);
+      console.warn("Gemini 실패", err);
+      if (aiMode === "auto") { toast("Gemini 연결이 안 돼서 휴대폰 AI로 셀게요"); return askDevice(); }
       st.aiManual = true; drawAi("fail");
     }
   }
@@ -263,7 +299,7 @@ R.quadrat = (el, q, { prev, config }) => {
       return {
         ok: true, data: {
           photo: st.photo, aiCount: Number(st.aiCount), aiPoints: st.aiPoints.slice(0, 400), aiManual: st.aiManual,
-          eye: Number(eye), basis: st.basis, perM2: Number(m2), total: Number(total), area
+          eye: Number(eye), basis: st.basis, perM2: Number(m2), total: Number(total), area, aiBy: st.aiManual ? "manual" : st.aiBy
         }
       };
     }

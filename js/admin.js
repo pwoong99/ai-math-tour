@@ -288,6 +288,7 @@ function renderQuestions(fillSettings) {
   $("sText").value = c.cipher.text || ""; $("sKey").value = c.cipher.key ?? "?"; $("sHint").value = c.cipher.hint || "";
   $("sAns").value = c.cipher.answer || ""; $("sAnsK").value = c.cipher.answerK ?? "";
   $("sArea").value = c.quadratArea; $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
+  $("sAiMode").value = c.aiMode || "auto";
   A.pz = Number(c.pentoPuzzle) || 0;
   renderPz(); cipherCheck();
 }
@@ -350,7 +351,7 @@ $("sSave").onclick = async () => {
       text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
       answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
     },
-    quadratArea: area, gasUrl: gas, pentoPuzzle: A.pz, pentoTimePublic: $("sTime").checked
+    quadratArea: area, gasUrl: gas, pentoPuzzle: A.pz, pentoTimePublic: $("sTime").checked, aiMode: $("sAiMode").value
   });
   toast("설정을 저장했어요.");
 };
@@ -396,7 +397,7 @@ function summarize(kind, d, priv) {
     case "latin": return `사진 있음${d.name ? " / " + d.name : ""}`;
     case "food": return `${d.value}g`;
     case "stride": return `1보 ${d.step}cm / 보폭 거리 ${d.walk}m / GPS ${d.gps}m`;
-    case "quadrat": return `직접 ${d.eye} / AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2} / 전체 ${d.total}`;
+    case "quadrat": return `직접 ${d.eye} / AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : d.aiBy === "device" ? "(휴대폰 AI)" : d.aiBy === "gemini" ? "(Gemini)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2} / 전체 ${d.total}`;
     case "fibo": return `${d.plant} / ${d.petals}장`;
     case "pento": return `완성 (${d.name || ""})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`;
     case "fun": return (d.picks || []).map((id) => qTitle(A.config.questions.find((q) => q.id === id) || { kind: "", title: id })).join(" · ");
