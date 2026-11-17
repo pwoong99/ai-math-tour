@@ -473,7 +473,8 @@ function openAdminPeek() {
   const named = (a) => {
     if (!$("pkNames").checked) return a;
     const p = A.priv[a.teamId];
-    return p ? { ...a, label: `${a.label} ${p.school} ${p.name}` } : a;
+    // 「A팀」 대신 「신대초 김순천」처럼 보여 줘요 (학교 이름의 「초등학교」는 「초」로 줄여요)
+    return p ? { ...a, label: `${p.school.replace(/초등학교$/, "초")} ${p.name}` } : a;
   };
   const draw = () => {
     if (q.kind === "scale") { drawScalePeek(body, priv.filter((r) => r.kind === "scale").map(named)); return; }
