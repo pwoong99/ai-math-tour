@@ -7,17 +7,26 @@
  * [처음 한 번 설정]
  * 1) 프로젝트 설정(톱니바퀴) → 스크립트 속성 → 속성 추가
  *      GEMINI_API_KEY = (Google AI Studio에서 받은 키, Gemini Project의 키)
- *      GEMINI_MODEL   = gemini-2.5-flash   (비워 두면 이 모델을 써요)
+ *      GEMINI_MODEL   = (선택) 기본 모델 대신 쓸 모델 이름
+ *    기본 모델은 gemini-3.6-flash, 안 되면 보조로 gemini-3.5-flash를 써요.
  * 2) 배포 → 새 배포 → 유형: 웹 앱
  *      실행 사용자: 나 / 액세스 권한: 모든 사용자
  * 3) 나온 웹 앱 주소(…/exec)를 관리자 화면 「문제 설정 → AI 꽃 세기 Apps Script 웹앱 주소」에 넣고 저장
  */
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const MAIN_MODEL = 'gemini-3.6-flash';   // 기본 모델
+const BACKUP_MODEL = 'gemini-3.5-flash';  // 기본 모델이 안 될 때 쓰는 보조 모델
+
+// 차례대로 시도할 모델 목록 (스크립트 속성 GEMINI_MODEL이 있으면 그 모델을 맨 앞에)
+function models_() {
+  const custom = PropertiesService.getScriptProperties().getProperty('GEMINI_MODEL');
+  const list = [custom, MAIN_MODEL, BACKUP_MODEL].filter(function (m) { return m; });
+  return list.filter(function (m, i) { return list.indexOf(m) === i; });
+}
 
 function doGet() {
   const p = PropertiesService.getScriptProperties();
-  return json_({ ok: true, model: p.getProperty('GEMINI_MODEL') || DEFAULT_MODEL, hasKey: !!p.getProperty('GEMINI_API_KEY') });
+  return json_({ ok: true, model: models_().join(' → '), hasKey: !!p.getProperty('GEMINI_API_KEY') });
 }
 
 function doPost(e) {
@@ -33,11 +42,23 @@ function doPost(e) {
 }
 
 function countFlowers_(base64) {
-  const props = PropertiesService.getScriptProperties();
-  const key = props.getProperty('GEMINI_API_KEY');
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!key) return { ok: false, error: 'GEMINI_API_KEY 스크립트 속성이 없어요' };
-  const model = props.getProperty('GEMINI_MODEL') || DEFAULT_MODEL;
+  const errors = [];
+  const list = models_();
+  for (let i = 0; i < list.length; i++) {
+    try {
+      const r = askGemini_(list[i], key, base64);
+      if (r.ok) return r;
+      errors.push(list[i] + ': ' + r.error);
+    } catch (err) {
+      errors.push(list[i] + ': ' + err);
+    }
+  }
+  return { ok: false, error: errors.join(' / ') };
+}
 
+function askGemini_(model, key, base64) {
   const prompt = [
     'This photo shows the inside of a 20cm x 20cm square quadrat frame placed on a flower bed of chrysanthemums (국화).',
     'Count every individual chrysanthemum flower head (bloom) that is visible in the image. Count open flowers and clearly visible buds that show color.',
@@ -65,12 +86,11 @@ function countFlowers_(base64) {
     muteHttpExceptions: true
   });
   if (res.getResponseCode() !== 200) {
-    return { ok: false, error: 'Gemini ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 300) };
+    return { ok: false, error: 'HTTP ' + res.getResponseCode() + ' ' + res.getContentText().slice(0, 200) };
   }
   const data = JSON.parse(res.getContentText());
-  const text = (((data.candidates || [])[0] || {}).content || {}).parts
-    ? data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('')
-    : '';
+  const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const text = parts.map(function (p) { return p.text || ''; }).join('');
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) return { ok: false, error: 'AI 답을 읽지 못했어요' };
   const out = JSON.parse(m[0]);
