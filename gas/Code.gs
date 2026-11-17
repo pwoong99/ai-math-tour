@@ -89,7 +89,11 @@ function askGemini_(model, key, base64) {
         { text: prompt }
       ]
     }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0 }
+    generationConfig: {
+      responseMimeType: 'application/json',
+      // Gemini 3.5 Flash부터는 기본으로 오래 생각해서 느려요. 꽃 세기는 'low'로 충분해요.
+      thinkingConfig: { thinkingLevel: 'low' }
+    }
   };
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';

@@ -1,10 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js";
-import { BUILTIN, funOptions, qTitle, qIcon } from "./questions.js";
-import { PUZZLES } from "./puzzles.js";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js";
-import { countFlowersOnDevice, sampleColor } from "./flowercount.js";
+import { esc, fileToJpeg, toast } from "./fb.js?v=1.9";
+import { BUILTIN, funOptions, qTitle, qIcon } from "./questions.js?v=1.9";
+import { PUZZLES } from "./puzzles.js?v=1.9";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=1.9";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -191,30 +190,15 @@ R.quadrat = (el, q, { prev, config }) => {
 
   const aiBox = $(".q-ai");
   const drawAi = (state) => {
-    if (state === "busy") { aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요…</div>`; return; }
+    if (state === "busy") { aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요…<br><span class="muted">10~30초쯤 걸릴 수 있어요. 기다려 주세요!</span></div>`; return; }
     if (st.photo && !st.aiManual && st.aiCount !== "") {
-      const byTxt = st.aiBy === "device" ? "📱 휴대폰 AI가 꽃 색깔로 셌어요" : "🤖 Gemini AI가 셌어요";
-      aiBox.innerHTML = `<div class="tapzone" style="cursor:crosshair">${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}</div>
-        <div class="muted" style="margin-top:6px"><b>${byTxt}</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>
-        <div class="row wrap" style="margin-top:8px;gap:6px">
-          ${st.aiBy === "device" ? `<span class="muted">꽃을 잘 못 찾았다면 👉 사진에서 <b>꽃 한 송이를 톡</b> 눌러 꽃 색을 알려 주세요.</span>` : ""}
-          ${st.aiBy !== "device" ? `<button type="button" class="btn small gray" data-dev>📱 휴대폰 AI로도 세어 보기</button>` : ""}
-          ${st.aiBy === "device" && config.gasUrl && aiMode !== "device" ? `<button type="button" class="btn small gray" data-retry>🤖 Gemini에게 다시 물어보기</button>` : ""}
-        </div>`;
-      aiBox.querySelector("[data-retry]")?.addEventListener("click", askAi);
-      aiBox.querySelector("[data-dev]")?.addEventListener("click", () => askDevice());
-      if (st.aiBy === "device") {
-        aiBox.querySelector(".tapzone img").addEventListener("click", async (e) => {
-          const r = e.target.getBoundingClientRect();
-          const rgb = await sampleColor(st.photo, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
-          askDevice(rgb);
-        });
-      }
+      aiBox.innerHTML = `${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}
+        <div class="muted" style="margin-top:6px"><b>🤖 Gemini AI가 셌어요</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>`;
       return;
     }
     const manual = st.aiManual || state === "fail";
     aiBox.innerHTML = manual
-      ? `${state === "fail" ? `<div class="err">AI에게 물어보지 못했어요. 다른 AI 앱(Gemini·ChatGPT 등)으로 센 수를 직접 적어 주세요.</div>` : ""}
+      ? `${state === "fail" ? `<div class="err">AI에게 물어보지 못했어요. 다른 AI 앱(Gemini·ChatGPT 등)으로 센 수를 직접 적어 주세요.</div>${st.aiErr ? `<div class="muted" style="font-size:12px">오류: ${esc(st.aiErr)}</div>` : ""}` : ""}
          ${numField("q_aiman", "다른 AI 앱이 센 꽃 수", "송이", st.aiCount, { int: true })}
          ${config.gasUrl && st.photo ? `<button type="button" class="btn small gray" style="margin-top:8px" data-retry>🔄 다시 AI에게 물어보기</button>` : ""}`
       : `<div class="muted">사진을 올리고 「AI에게 세어 달라고 하기」를 누르면 여기에 결과가 나와요.</div>`;
@@ -245,44 +229,24 @@ R.quadrat = (el, q, { prev, config }) => {
       };
     };
   };
-  // AI 방식: auto = Gemini 먼저, 안 되면 휴대폰 AI / device = 휴대폰 AI만 / gemini = Gemini만
-  const aiMode = config.aiMode || "auto";
-  async function askDevice(pickRGB = null) {
+  async function askAi() {
+    if (!st.photo) return;
+    if (!config.gasUrl) { st.aiManual = true; st.aiErr = "AI 주소가 설정되지 않았어요"; drawAi("fail"); return; }
     drawAi("busy");
-    try {
-      const r = await countFlowersOnDevice(st.photo, { pickRGB });
-      st.aiCount = String(r.count); st.aiPoints = r.points; st.aiManual = false; st.aiBy = "device";
-      drawAi(); formula();
-      if (pickRGB) toast(`고른 색으로 다시 셌어요: ${r.count}송이`);
-    } catch (err) {
-      console.warn(err);
-      st.aiManual = true; drawAi("fail");
-    }
-  }
-  async function askGemini() {
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 75000);
     try {
       const res = await fetch(config.gasUrl, {
         method: "POST", body: JSON.stringify({ image: st.photo.split(",")[1] }), signal: ctl.signal
       });
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || "fail");
-      return j;
-    } finally { clearTimeout(tm); }
-  }
-  async function askAi() {
-    if (!st.photo) return;
-    if (aiMode === "device" || !config.gasUrl) return askDevice();
-    drawAi("busy");
-    try {
-      const j = await askGemini();
-      st.aiCount = String(j.count); st.aiPoints = j.points || []; st.aiManual = false; st.aiBy = "gemini";
+      st.aiCount = String(j.count); st.aiPoints = j.points || []; st.aiManual = false; st.aiBy = "gemini"; st.aiErr = "";
       drawAi(); formula();
     } catch (err) {
-      console.warn("Gemini 실패", err);
-      if (aiMode === "auto") { toast("Gemini 연결이 안 돼서 휴대폰 AI로 셀게요"); return askDevice(); }
+      console.warn(err);
+      st.aiErr = err.name === "AbortError" ? "응답이 너무 오래 걸렸어요 (75초)" : String(err.message || err).slice(0, 160);
       st.aiManual = true; drawAi("fail");
-    }
+    } finally { clearTimeout(tm); }
   }
   drawPhoto(); drawAi(); formula();
 
@@ -299,7 +263,7 @@ R.quadrat = (el, q, { prev, config }) => {
       return {
         ok: true, data: {
           photo: st.photo, aiCount: Number(st.aiCount), aiPoints: st.aiPoints.slice(0, 400), aiManual: st.aiManual,
-          eye: Number(eye), basis: st.basis, perM2: Number(m2), total: Number(total), area, aiBy: st.aiManual ? "manual" : st.aiBy
+          eye: Number(eye), basis: st.basis, perM2: Number(m2), total: Number(total), area, aiBy: st.aiManual ? "manual" : "gemini"
         }
       };
     }

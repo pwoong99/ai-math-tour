@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex">
   <title>AI수학투어 관리자</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛠️%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=1.9">
 </head>
 <body class="admin">
   <header class="topbar">
@@ -149,12 +149,6 @@
             <h3 style="margin-top:0">🌼 방형구 · ⚙️ 기타</h3>
             <label class="fld">주최측이 알려 주는 꽃밭 영역 넓이 (㎡)</label>
             <input id="sArea" class="inp" inputmode="decimal">
-            <label class="fld">AI 꽃 세기 방식</label>
-            <select id="sAiMode" class="inp">
-              <option value="auto">Gemini 먼저, 안 되면 휴대폰 AI (추천)</option>
-              <option value="device">휴대폰 AI만 (인터넷·키 없이 꽃 색깔로 세기)</option>
-              <option value="gemini">Gemini만 (안 되면 직접 입력)</option>
-            </select>
             <label class="fld">AI 꽃 세기 Apps Script 웹앱 주소</label>
             <input id="sGas" class="inp" placeholder="https://script.google.com/macros/s/…/exec">
             <button id="sGasTest" class="btn gray small" type="button" style="margin-top:8px">연결 시험</button> <span id="sGasMsg" class="muted"></span>
@@ -187,6 +181,6 @@
     </section>
     <div class="footer">만든 곳: 순천수학교육체험센터 · <span class="ver"></span></div>
   </main>
-  <script type="module" src="js/admin.js"></script>
+  <script type="module" src="js/admin.js?v=1.9"></script>
 </body>
 </html>

@@ -91,7 +91,6 @@ export const DEFAULT_CONFIG = {
   quadratArea: 20,      // 주최측이 알려 주는 꽃밭 영역 넓이(㎡)
   pentoPuzzle: 7,       // PUZZLES 번호 (기본: 4조각 ① 우주선)
   pentoTimePublic: false,
-  aiMode: "auto",       // AI 꽃 세기: auto(Gemini → 안 되면 휴대폰) / device(휴대폰만) / gemini(Gemini만)
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
   gasUrl: "https://script.google.com/macros/s/AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58/exec"
 };
