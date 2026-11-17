@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───────── 웹앱 모음 페이지 (기존 규칙 그대로) ─────────
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'pwoong99@ai.jne.kr'
+        && request.auth.token.email_verified == true;
+    }
+
+    // 페이지 제목·설명·분류 목록: 누구나 읽기, 관리자만 쓰기
+    match /meta/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 앱 목록: 숨긴 앱은 관리자만 읽기
+    // 일반 방문자는 공개 앱의 클릭 수를 1씩 올리는 것만 가능
+    match /apps/{appId} {
+      allow read: if isAdmin() || resource.data.hidden == false;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        resource.data.hidden == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks'])
+        && request.resource.data.clicks == resource.data.get('clicks', 0) + 1
+      );
+    }
+
+    // 전체 방문 수: 누구나 1씩 올리기만 가능, 보기는 관리자만
+    match /stats/site {
+      allow read, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['visits'])
+        && request.resource.data.visits == 1;
+      allow update: if request.resource.data.keys().hasOnly(['visits'])
+        && request.resource.data.visits == resource.data.visits + 1;
+    }
+
+    // 날짜별 방문 수 (문서 이름: 2026-11-05 형식)
+    match /daily/{day} {
+      allow read, delete: if isAdmin();
+      allow create: if day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.keys().hasOnly(['visits'])
+        && request.resource.data.visits == 1;
+      allow update: if request.resource.data.keys().hasOnly(['visits'])
+        && request.resource.data.visits == resource.data.visits + 1;
+    }
+
+    // ───────── AI수학투어 (mathTour_) ─────────
+    // 관리자: 이메일/비밀번호로 로그인한 pwoong99@gmail.com (웹앱 모음 관리자 계정도 허용)
+    function isTourAdmin() {
+      return request.auth != null
+        && ((request.auth.token.email == 'pwoong99@gmail.com'
+             && request.auth.token.firebase.sign_in_provider == 'password')
+            || isAdmin());
+    }
+    function signedIn() { return request.auth != null; }
+    function mySession() {
+      return get(/databases/$(database)/documents/mathTour_sessions/$(request.auth.uid)).data;
+    }
+    // 이 기기가 그 팀으로 로그인했는지
+    function isTeam(teamId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/mathTour_sessions/$(request.auth.uid))
+        && mySession().teamId == teamId;
+    }
+    function tourConfig() {
+      return get(/databases/$(database)/documents/mathTour_config/main).data;
+    }
+
+    // 문제 목록·설정: 접속한 사람은 읽기, 관리자만 쓰기
+    match /mathTour_config/{docId} {
+      allow read: if signedIn();
+      allow write: if isTourAdmin();
+    }
+
+    // 로그인 화면의 학교 목록
+    match /mathTour_schools/{sess} {
+      allow read: if signedIn();
+      allow write: if isTourAdmin();
+    }
+
+    // 로그인 열쇠: 정확한 열쇠를 아는 사람만 한 개씩 확인 가능 (목록 보기는 관리자만)
+    match /mathTour_logins/{key} {
+      allow get: if signedIn();
+      allow list, write: if isTourAdmin();
+    }
+
+    // 기기 ↔ 팀 연결: 올바른 로그인 열쇠를 가진 기기만 만들 수 있어요
+    match /mathTour_sessions/{uid} {
+      allow read: if isTourAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/mathTour_logins/$(request.resource.data.key))
+        && get(/databases/$(database)/documents/mathTour_logins/$(request.resource.data.key)).data.teamId == request.resource.data.teamId
+        && get(/databases/$(database)/documents/mathTour_logins/$(request.resource.data.key)).data.session == request.resource.data.session;
+      allow delete: if isTourAdmin();
+    }
+
+    // 팀 공개 정보(A팀…·진행 상황): 가족은 자기 팀의 진행 상황만 바꿀 수 있어요
+    match /mathTour_teams/{teamId} {
+      allow read: if signedIn();
+      allow create, delete: if isTourAdmin();
+      allow update: if isTourAdmin() || (
+        isTeam(teamId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['solved', 'current', 'updatedAt'])
+      );
+    }
+
+    // 학교·학생 이름·비밀번호: 관리자만
+    match /mathTour_teamsPrivate/{teamId} {
+      allow read, write: if isTourAdmin();
+    }
+
+    // 답: 같은 시간대 가족이 엿볼 수 있게 읽기 허용, 쓰기는 자기 팀 답만
+    match /mathTour_answers/{answerId} {
+      allow read: if signedIn();
+      allow create, update: if isTourAdmin() || (
+        isTeam(request.resource.data.teamId)
+        && request.resource.data.session == mySession().session
+        && answerId == request.resource.data.teamId + '_' + request.resource.data.qid
+      );
+      allow delete: if isTourAdmin();
+    }
+
+    // 만족도·펜토미노 걸린 시간: 관리자만 읽기
+    // (펜토미노 시간은 관리자가 '공개'로 바꾸면 가족도 읽을 수 있어요)
+    match /mathTour_private/{pid} {
+      allow read: if isTourAdmin() || (
+        signedIn() && resource.data.kind == 'pentoTime' && tourConfig().pentoTimePublic == true
+      );
+      allow create, update: if isTourAdmin() || (
+        isTeam(request.resource.data.teamId)
+        && request.resource.data.session == mySession().session
+        && pid == request.resource.data.teamId + '_' + request.resource.data.qid
+      );
+      allow delete: if isTourAdmin();
+    }
+  }
+}

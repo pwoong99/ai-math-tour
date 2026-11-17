@@ -1,0 +1,443 @@
+// 관리자 화면: 팀 관리 · 진행 현황 · 문제 설정 · 결과
+import {
+  doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, onSnapshot,
+  collection, query, where, serverTimestamp, deleteField
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon } from "./questions.js";
+import { PUZZLES } from "./puzzles.js";
+import { miniGrid } from "./widgets.js";
+import { drawRoster, savePng } from "./cert.js";
+
+const $ = (id) => document.getElementById(id);
+const A = {
+  session: localStorage.getItem("mt_admin_session") || "am",
+  tab: "teams", config: withDefaults(null), teams: [], priv: {}, unsub: [], qDraft: null
+};
+
+/* ── 로그인 ── */
+onAuthStateChanged(auth, async (u) => {
+  const ok = u && !u.isAnonymous && u.email === ADMIN_EMAIL;
+  $("a-login").classList.toggle("hidden", ok);
+  $("a-main").classList.toggle("hidden", !ok);
+  $("sessSeg").classList.toggle("hidden", !ok);
+  $("btnOut").classList.toggle("hidden", !ok);
+  if (u && !ok && !u.isAnonymous) { $("aErr").textContent = "관리자 계정이 아니에요."; await signOut(auth); }
+  if (ok) start();
+});
+$("aLogin").onclick = async () => {
+  $("aErr").textContent = "";
+  try { await signInWithEmailAndPassword(auth, $("aEmail").value.trim(), $("aPw").value); }
+  catch (e) { console.warn(e); $("aErr").textContent = "이메일 또는 비밀번호가 맞지 않아요."; }
+};
+$("aPw").addEventListener("keydown", (e) => { if (e.key === "Enter") $("aLogin").click(); });
+$("btnOut").onclick = () => signOut(auth);
+
+let started = false;
+async function start() {
+  if (started) return;
+  started = true;
+  // 설정 문서가 없으면 기본값으로 만들기
+  const cs = await getDoc(doc(db, C.config, "main"));
+  if (!cs.exists()) await setDoc(doc(db, C.config, "main"), DEFAULT_CONFIG);
+  onSnapshot(doc(db, C.config, "main"), (snap) => {
+    A.config = withDefaults(snap.data());
+    if (!A.qDraft) A.qDraft = JSON.parse(JSON.stringify(A.config.questions));
+    if (A.tab === "questions") renderQuestions(false);
+    if (A.tab === "progress") renderProgress();
+  });
+  $("sessSeg").querySelectorAll("button").forEach((b) => b.onclick = () => setSession(b.dataset.s));
+  $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => setTab(b.dataset.t));
+  setSession(A.session);
+  setTab("teams");
+}
+
+function setSession(s) {
+  A.session = s;
+  localStorage.setItem("mt_admin_session", s);
+  $("sessSeg").querySelectorAll("button").forEach((b) => b.style.background = b.dataset.s === s ? "#fff" : "");
+  $("sessSeg").querySelectorAll("button").forEach((b) => b.style.color = b.dataset.s === s ? "#17795a" : "");
+  $("sessTitle").textContent = `${s === "am" ? "☀️" : "🌇"} ${SESSIONS[s]}`;
+  A.unsub.forEach((u) => u()); A.unsub = [];
+  A.teams = []; A.priv = {};
+  A.unsub.push(onSnapshot(query(collection(db, C.teams), where("session", "==", s)), (snap) => {
+    A.teams = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.labelIndex - b.labelIndex);
+    renderTeams(); if (A.tab === "progress") renderProgress();
+  }));
+  A.unsub.push(onSnapshot(query(collection(db, C.teamsPrivate), where("session", "==", s)), (snap) => {
+    A.priv = {}; snap.forEach((d) => A.priv[d.id] = d.data());
+    renderTeams(); if (A.tab === "progress") renderProgress();
+  }));
+  $("rScale").textContent = $("rPento").textContent = "「결과 불러오기」를 눌러 주세요.";
+}
+function setTab(t) {
+  A.tab = t;
+  $("tabs").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+  ["teams", "progress", "questions", "results"].forEach((n) => $("t-" + n).classList.toggle("hidden", n !== t));
+  if (t === "progress") renderProgress();
+  if (t === "questions") { A.qDraft = JSON.parse(JSON.stringify(A.config.questions)); renderQuestions(true); }
+}
+
+/* ── 팀 관리 ── */
+const fullTeams = () => A.teams.map((t) => ({ ...t, ...(A.priv[t.id] || {}), label: t.label }));
+function randomPw(except = new Set()) {
+  const used = new Set([...Object.values(A.priv).map((p) => String(p.pw)), ...except]);
+  for (let i = 0; i < 5000; i++) {
+    const v = String(1000 + Math.floor(Math.random() * 9000));
+    if (!used.has(v)) return v;
+  }
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+async function updateSchools() {
+  const list = [...new Set(Object.values(A.priv).filter((p) => p.session === A.session).map((p) => p.school))].sort((a, b) => a.localeCompare(b, "ko"));
+  await setDoc(doc(db, C.schools, A.session), { list });
+}
+async function refreshPriv() {
+  const snap = await getDocs(query(collection(db, C.teamsPrivate), where("session", "==", A.session)));
+  A.priv = {}; snap.forEach((d) => A.priv[d.id] = d.data());
+}
+
+async function addTeam(school, name, pw, used) {
+  school = normSchool(school); name = normName(name); pw = String(pw || "").trim();
+  if (!school || !name) throw new Error("학교와 이름을 모두 써 주세요.");
+  const pe = checkPw(pw); if (pe) throw new Error(pe);
+  const dup = Object.values(A.priv).find((p) => p.school === school && p.name === name);
+  if (dup) throw new Error(`${school} ${name} 학생은 이미 ${dup.label}으로 등록돼 있어요.`);
+  const idx = Math.max(-1, ...A.teams.map((t) => t.labelIndex), ...(used?.idx || [])) + 1;
+  const label = labelOf(idx);
+  const ref = doc(collection(db, C.teams));
+  const key = await loginKey(A.session, school, name, Number(pw));
+  const b = writeBatch(db);
+  b.set(ref, { session: A.session, label, labelIndex: idx, solved: {}, current: "", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  b.set(doc(db, C.teamsPrivate, ref.id), { session: A.session, label, school, name, pw: Number(pw), key });
+  b.set(doc(db, C.logins, key), { teamId: ref.id, session: A.session });
+  await b.commit();
+  // 바로 다음 추가에도 반영되도록 로컬 목록에 넣어 두기
+  A.priv[ref.id] = { session: A.session, label, school, name, pw: Number(pw), key };
+  A.teams.push({ id: ref.id, session: A.session, label, labelIndex: idx, solved: {} });
+  return label;
+}
+
+$("nRand").onclick = () => $("nPw").value = randomPw();
+$("nPw").addEventListener("input", (e) => e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4));
+$("nAdd").onclick = async () => {
+  $("nErr").textContent = "";
+  try {
+    const label = await addTeam($("nSchool").value, $("nName").value, $("nPw").value);
+    await updateSchools();
+    toast(`${label}을 추가했어요.`);
+    $("nName").value = ""; $("nPw").value = "";
+  } catch (e) { $("nErr").textContent = e.message || "추가하지 못했어요."; }
+};
+$("bAdd").onclick = async () => {
+  const lines = $("bulk").value.split(/\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+  $("bErr").textContent = "";
+  $("bAdd").disabled = true;
+  const errs = []; let n = 0; const fresh = new Set();
+  for (const ln of lines) {
+    const parts = ln.split(/\t|,/).map((s) => s.trim());
+    const [school, name] = parts;
+    let pw = parts[2] || "";
+    if (!pw) { pw = randomPw(fresh); fresh.add(pw); }
+    try { await addTeam(school, name, pw); n++; }
+    catch (e) { errs.push(`「${ln}」 → ${e.message}`); }
+  }
+  await updateSchools();
+  $("bAdd").disabled = false;
+  $("bErr").textContent = errs.join("\n");
+  if (n) { toast(`${n}팀을 추가했어요.`); if (!errs.length) $("bulk").value = ""; }
+};
+
+function renderTeams() {
+  const list = fullTeams();
+  $("teamCount").textContent = `(${list.length}팀)`;
+  $("schoolList").innerHTML = [...new Set(list.map((t) => t.school).filter(Boolean))].map((s) => `<option value="${esc(s)}">`).join("");
+  $("teamTbl").innerHTML = `<thead><tr><th>팀</th><th>학교</th><th>학생 이름</th><th class="c">비밀번호</th><th class="c">진행</th><th class="c">관리</th></tr></thead>
+    <tbody>${list.map((t) => `<tr data-id="${t.id}">
+      <td><b>${esc(t.label)}</b></td>
+      <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="school" value="${esc(t.school || "")}"></td>
+      <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="name" value="${esc(t.name || "")}"></td>
+      <td class="c"><div class="row" style="gap:4px;justify-content:center"><input class="inp" style="padding:6px;font-size:16px;width:80px;text-align:center;font-weight:800" data-f="pw" inputmode="numeric" maxlength="4" value="${esc(t.pw ?? "")}"><button class="btn small gray" data-a="rand" type="button">🎲</button></div></td>
+      <td class="c">${Object.keys(t.solved || {}).length}</td>
+      <td class="c"><button class="btn small" data-a="save" type="button">저장</button> <button class="btn small red" data-a="del" type="button">삭제</button></td></tr>`).join("")
+    || `<tr><td colspan="6" class="c muted" style="padding:24px">아직 등록된 팀이 없어요.</td></tr>`}</tbody>`;
+  $("teamTbl").querySelectorAll("tr[data-id]").forEach((tr) => {
+    const id = tr.dataset.id;
+    tr.querySelector('[data-a="rand"]').onclick = () => tr.querySelector('[data-f="pw"]').value = randomPw();
+    tr.querySelector('[data-a="save"]').onclick = () => saveTeam(id, tr);
+    tr.querySelector('[data-a="del"]').onclick = () => delTeam(id);
+  });
+}
+
+async function saveTeam(id, tr) {
+  const p = A.priv[id]; if (!p) return;
+  const school = normSchool(tr.querySelector('[data-f="school"]').value);
+  const name = normName(tr.querySelector('[data-f="name"]').value);
+  const pw = tr.querySelector('[data-f="pw"]').value.trim();
+  const pe = checkPw(pw); if (pe) return alert(pe);
+  if (!school || !name) return alert("학교와 이름을 모두 써 주세요.");
+  const dup = Object.entries(A.priv).find(([k, x]) => k !== id && x.school === school && x.name === name);
+  if (dup) return alert(`${school} ${name} 학생은 이미 ${dup[1].label}으로 등록돼 있어요.`);
+  const key = await loginKey(A.session, school, name, Number(pw));
+  const b = writeBatch(db);
+  if (key !== p.key) {
+    b.delete(doc(db, C.logins, p.key));
+    b.set(doc(db, C.logins, key), { teamId: id, session: A.session });
+  }
+  b.set(doc(db, C.teamsPrivate, id), { ...p, school, name, pw: Number(pw), key });
+  await b.commit();
+  await refreshPriv(); await updateSchools();
+  toast(`${p.label} 정보를 저장했어요.${key !== p.key ? " (이미 접속한 기기는 그대로 쓸 수 있어요)" : ""}`);
+}
+
+async function delTeam(id) {
+  const p = A.priv[id];
+  if (!confirm(`${p?.label} (${p?.school} ${p?.name}) 팀을 지울까요?\n이 팀이 낸 답도 함께 지워져요.`)) return;
+  const b = writeBatch(db);
+  b.delete(doc(db, C.teams, id));
+  b.delete(doc(db, C.teamsPrivate, id));
+  if (p?.key) b.delete(doc(db, C.logins, p.key));
+  const [ans, pv] = await Promise.all([
+    getDocs(query(collection(db, C.answers), where("teamId", "==", id))),
+    getDocs(query(collection(db, C.priv), where("teamId", "==", id)))
+  ]);
+  ans.forEach((d) => b.delete(d.ref)); pv.forEach((d) => b.delete(d.ref));
+  await b.commit();
+  delete A.priv[id];
+  await updateSchools();
+  toast("팀을 지웠어요.");
+}
+
+$("btnRoster").onclick = async () => {
+  const list = fullTeams();
+  if (!list.length) return toast("등록된 팀이 없어요.");
+  const cv = await drawRoster(`${SESSIONS[A.session]} 로그인 명단 (${list.length}팀)`, list);
+  await savePng(cv, `AI수학투어_${SESSIONS[A.session]}_명단.png`);
+};
+
+/* ── 진행 현황 ── */
+function renderProgress() {
+  const qs = A.config.questions.filter((q) => !q.hidden);
+  const list = fullTeams();
+  const done = list.filter((t) => qs.every((q) => t.solved?.[q.id])).length;
+  const ago = (ts) => {
+    if (!ts?.toMillis) return "-";
+    const m = Math.round((Date.now() - ts.toMillis()) / 60000);
+    return m < 1 ? "방금" : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 전`;
+  };
+  $("pgStats").innerHTML = [[list.length + "팀", "참여 팀"], [done + "팀", "완주"], [list.length ? Math.round(list.reduce((a, t) => a + qs.filter((q) => t.solved?.[q.id]).length, 0) / list.length * 10) / 10 + "개" : "-", "팀당 평균 해결"]]
+    .map(([v, t]) => `<div class="stat"><b>${v}</b><span>${t}</span></div>`).join("");
+  $("pgTbl").innerHTML = `<thead><tr><th>팀</th><th>학교 · 이름</th><th>지금 미션</th><th class="c">해결</th>${qs.map((q, i) => `<th class="c" title="${esc(qTitle(q))}">${i + 1}<br>${qIcon(q)}</th>`).join("")}<th>최근</th></tr></thead>
+    <tbody>${list.map((t) => {
+      const curI = qs.findIndex((q) => q.id === t.current);
+      const n = qs.filter((q) => t.solved?.[q.id]).length;
+      return `<tr><td><b>${esc(t.label)}</b></td><td>${esc(t.school || "")} ${esc(t.name || "")}</td>
+        <td>${curI >= 0 ? `${curI + 1}. ${esc(qTitle(qs[curI]))}` : n === qs.length && n ? "🏆 완주" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
+        ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}">${ok ? "✔" : cur ? "👉" : ""}</td>`; }).join("")}
+        <td class="muted">${ago(t.updatedAt)}</td></tr>`;
+    }).join("")}
+    <tr style="background:#f3f0e6"><td colspan="4"><b>미션별 해결 팀 수</b></td>${qs.map((q) => `<td class="c"><b>${list.filter((t) => t.solved?.[q.id]).length}</b></td>`).join("")}<td></td></tr></tbody>`;
+}
+setInterval(() => { if (A.tab === "progress" && started) renderProgress(); }, 30000);
+
+/* ── 문제 설정 ── */
+function renderQuestions(fillSettings) {
+  const d = A.qDraft || [];
+  let no = 0;
+  $("qList").innerHTML = d.map((q, i) => {
+    if (!q.hidden) no++;
+    return `<div class="qrow ${q.hidden ? "off" : ""}" data-i="${i}">
+      <div class="no">${q.hidden ? "-" : no}</div><div style="font-size:24px">${qIcon(q)}</div>
+      <div class="tt"><input data-f="title" value="${esc(qTitle(q))}">
+        <textarea data-f="desc" rows="2">${esc(qDesc(q))}</textarea>
+        <div class="muted" style="font-size:12px">${isBuiltin(q) ? "기본 미션" : "추가한 미션 · " + CUSTOM_KINDS[q.kind]}${q.kind === "scale" ? " · 관리자만 보는 답" : ""}</div></div>
+      <div style="display:grid;gap:4px">
+        <button class="btn small gray" data-a="up" type="button">↑</button>
+        <button class="btn small gray" data-a="down" type="button">↓</button></div>
+      <div style="display:grid;gap:4px">
+        <button class="btn small ${q.hidden ? "" : "ghost"}" data-a="hide" type="button">${q.hidden ? "보이기" : "숨기기"}</button>
+        ${isBuiltin(q) ? "" : `<button class="btn small red" data-a="del" type="button">삭제</button>`}</div></div>`;
+  }).join("");
+  $("qList").querySelectorAll(".qrow").forEach((row) => {
+    const i = Number(row.dataset.i);
+    row.querySelector('[data-f="title"]').oninput = (e) => d[i].title = e.target.value;
+    row.querySelector('[data-f="desc"]').oninput = (e) => d[i].desc = e.target.value;
+    row.querySelector('[data-a="up"]').onclick = () => { if (i > 0) { [d[i - 1], d[i]] = [d[i], d[i - 1]]; renderQuestions(false); } };
+    row.querySelector('[data-a="down"]').onclick = () => { if (i < d.length - 1) { [d[i + 1], d[i]] = [d[i], d[i + 1]]; renderQuestions(false); } };
+    row.querySelector('[data-a="hide"]').onclick = () => { d[i].hidden = !d[i].hidden; renderQuestions(false); };
+    row.querySelector('[data-a="del"]')?.addEventListener("click", () => {
+      if (confirm(`「${qTitle(d[i])}」 미션을 목록에서 지울까요? (저장해야 반영돼요)`)) { d.splice(i, 1); renderQuestions(false); }
+    });
+  });
+  if (!fillSettings) return;
+  const c = A.config;
+  $("sText").value = c.cipher.text || ""; $("sKey").value = c.cipher.key ?? "?"; $("sHint").value = c.cipher.hint || "";
+  $("sAns").value = c.cipher.answer || ""; $("sAnsK").value = c.cipher.answerK ?? "";
+  $("sArea").value = c.quadratArea; $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
+  A.pz = Number(c.pentoPuzzle) || 0;
+  renderPz(); cipherCheck();
+}
+$("cKind").innerHTML = Object.entries(CUSTOM_KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+$("cKind").onchange = () => {
+  $("cNum").classList.toggle("hidden", $("cKind").value !== "number");
+  $("cOpt").classList.toggle("hidden", $("cKind").value !== "choice");
+};
+$("cAdd").onclick = () => {
+  const kind = $("cKind").value, title = $("cTitle").value.trim();
+  if (!title) return toast("제목을 써 주세요.");
+  const q = { id: "c_" + Date.now().toString(36), kind, title, desc: $("cDesc").value.trim(), hidden: false };
+  if (kind === "number") { q.label = $("cLabel").value.trim() || "답"; q.unit = $("cUnit").value.trim(); q.intOnly = $("cInt").checked; }
+  if (kind === "choice") {
+    q.options = $("cOpts").value.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (q.options.length < 2) return toast("고를 것을 두 개 이상 적어 주세요.");
+  }
+  A.qDraft.push(q);
+  renderQuestions(false);
+  ["cTitle", "cDesc", "cLabel", "cUnit", "cOpts"].forEach((id) => $(id).value = "");
+  toast("목록에 추가했어요. 「문제 목록 저장」을 눌러야 가족 화면에 반영돼요.");
+};
+$("qSave").onclick = async () => {
+  const clean = A.qDraft.map((q) => {
+    const o = { ...q };
+    // 기본 미션은 기본 제목·안내와 같으면 저장하지 않음 (나중에 기본 글이 바뀌어도 따라가도록)
+    if (isBuiltin(o)) {
+      if (o.title === BUILTIN[o.kind].title) delete o.title;
+      if (o.desc === BUILTIN[o.kind].desc) delete o.desc;
+    }
+    return o;
+  });
+  await updateDoc(doc(db, C.config, "main"), { questions: clean });
+  toast("문제 목록을 저장했어요.");
+};
+
+function renderPz() {
+  $("pzPick").innerHTML = PUZZLES.map((p, i) => `<button type="button" data-i="${i}" class="${i === A.pz ? "on" : ""}">
+    <div style="display:flex;justify-content:center;height:96px;align-items:center">${miniGrid(p.rows, 10)}</div>
+    ${esc(p.level)}<br>${esc(p.name)}<div class="muted" style="font-size:11px">${p.pieces}</div></button>`).join("");
+  $("pzPick").querySelectorAll("button").forEach((b) => b.onclick = () => { A.pz = Number(b.dataset.i); renderPz(); });
+}
+function cipherCheck() {
+  const t = $("sText").value.toUpperCase(), a = $("sAns").value.toUpperCase().trim(), k = Number($("sAnsK").value || $("sKey").value);
+  if (!t || !a || !Number.isFinite(k) || !k) { $("sCheck").textContent = ""; return; }
+  const dec = t.replace(/[A-Z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 65 - k + 260) % 26 + 65));
+  $("sCheck").innerHTML = dec.trim() === a ? `✅ 열쇠 ${k}로 풀면 정답 문장과 같아요.` : `⚠️ 열쇠 ${k}로 풀면 「${esc(dec)}」 — 정답 문장과 달라요. 확인해 주세요.`;
+}
+["sText", "sAns", "sAnsK", "sKey"].forEach((id) => $(id).addEventListener("input", cipherCheck));
+
+$("sSave").onclick = async () => {
+  const area = Number($("sArea").value);
+  if (!(area > 0)) return toast("꽃밭 넓이를 숫자로 써 주세요.");
+  const key = $("sKey").value.trim();
+  if (key !== "?" && !/^\d{1,2}$/.test(key)) return toast("열쇠 k는 숫자(1~25) 또는 ?로 써 주세요.");
+  const gas = $("sGas").value.trim();
+  if (gas && !/^https:\/\/script\.google\.com\//.test(gas)) return toast("Apps Script 웹앱 주소(https://script.google.com/…)를 넣어 주세요.");
+  await updateDoc(doc(db, C.config, "main"), {
+    cipher: {
+      text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
+      answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
+    },
+    quadratArea: area, gasUrl: gas, pentoPuzzle: A.pz, pentoTimePublic: $("sTime").checked
+  });
+  toast("설정을 저장했어요.");
+};
+$("sGasTest").onclick = async () => {
+  const u = $("sGas").value.trim();
+  if (!u) return;
+  $("sGasMsg").textContent = "확인 중…";
+  try {
+    const j = await (await fetch(u)).json();
+    $("sGasMsg").textContent = j.ok ? `✅ 연결됨 (${j.model || "Gemini"}${j.hasKey ? "" : " · ⚠️ API 키가 없어요"})` : "⚠️ 응답이 이상해요";
+  } catch { $("sGasMsg").textContent = "❌ 연결하지 못했어요. 배포 설정(액세스: 모든 사용자)을 확인해 주세요."; }
+};
+
+/* ── 결과 ── */
+$("rLoad").onclick = loadResults;
+async function loadResults() {
+  const snap = await getDocs(query(collection(db, C.priv), where("session", "==", A.session)));
+  const rows = snap.docs.map((d) => d.data());
+  const name = (r) => { const p = A.priv[r.teamId]; return p ? `${esc(p.school)} ${esc(p.name)}` : ""; };
+  const sc = rows.filter((r) => r.kind === "scale").sort((a, b) => a.label.localeCompare(b.label));
+  if (!sc.length) $("rScale").innerHTML = "아직 답한 팀이 없어요.";
+  else {
+    const avg = sc.reduce((a, r) => a + r.value, 0) / sc.length;
+    const dist = [1, 2, 3, 4, 5].map((v) => sc.filter((r) => r.value === v).length);
+    const mx = Math.max(...dist, 1);
+    $("rScale").innerHTML = `<div class="stat-row"><div class="stat"><b>${avg.toFixed(2)}점</b><span>평균 (5점 만점)</span></div><div class="stat"><b>${sc.length}팀</b><span>응답</span></div></div>
+      ${[5, 4, 3, 2, 1].map((v) => `<div class="row" style="margin:4px 0"><b style="width:40px">${v}점</b><div class="grow" style="background:#f0ece1;border-radius:99px;height:20px"><i style="display:block;height:100%;width:${dist[v - 1] / mx * 100}%;background:#f08a24;border-radius:99px"></i></div><b style="width:40px;text-align:right">${dist[v - 1]}</b></div>`).join("")}
+      <div class="tbl-wrap" style="margin-top:10px;max-height:300px"><table class="t"><thead><tr><th>팀</th><th>학교 · 이름</th><th class="c">점수</th></tr></thead>
+      <tbody>${sc.map((r) => `<tr><td>${esc(r.label)}</td><td>${name(r)}</td><td class="c"><b>${r.value}</b></td></tr>`).join("")}</tbody></table></div>`;
+  }
+  const pt = rows.filter((r) => r.kind === "pentoTime").sort((a, b) => a.seconds - b.seconds);
+  const f = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
+  $("rPento").innerHTML = pt.length ? `<div class="muted" style="margin-bottom:6px">${A.config.pentoTimePublic ? "🔓 가족 엿보기에 공개 중" : "🔒 비공개 (문제 설정에서 공개할 수 있어요)"}</div>
+    <div class="tbl-wrap" style="max-height:420px"><table class="t"><thead><tr><th class="c">순위</th><th>팀</th><th>학교 · 이름</th><th>퍼즐</th><th class="c">걸린 시간</th></tr></thead>
+    <tbody>${pt.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td>${esc(PUZZLES[r.puzzle]?.name || "")}</td><td class="c"><b>${f(r.seconds)}</b></td></tr>`).join("")}</tbody></table></div>` : "아직 완성한 팀이 없어요.";
+}
+
+function summarize(kind, d, priv) {
+  if (!d) return "";
+  switch (kind) {
+    case "euler": return `${d.possible} / 홀수점 ${d.odd}개 / ${d.reason}`;
+    case "cipher": return `${d.decoded}${d.k != null ? ` (k=${d.k})` : ""}`;
+    case "latin": return `사진 있음${d.name ? " / " + d.name : ""}`;
+    case "food": return `${d.value}g`;
+    case "stride": return `1보 ${d.step}cm / 보폭 거리 ${d.walk}m / GPS ${d.gps}m`;
+    case "quadrat": return `직접 ${d.eye} / AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2} / 전체 ${d.total}`;
+    case "fibo": return `${d.plant} / ${d.petals}장`;
+    case "pento": return `완성 (${d.name || ""})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`;
+    case "fun": return (d.picks || []).map((id) => qTitle(A.config.questions.find((q) => q.id === id) || { kind: "", title: id })).join(" · ");
+    case "scale": return priv?.value != null ? `${priv.value}점` : "제출";
+    case "comment": case "text": return d.text;
+    case "number": return String(d.value);
+    case "choice": return d.pick;
+    case "photo": return "사진 있음";
+    default: return JSON.stringify(d);
+  }
+}
+$("rCsv").onclick = async () => {
+  const [a, p] = await Promise.all([
+    getDocs(query(collection(db, C.answers), where("session", "==", A.session))),
+    getDocs(query(collection(db, C.priv), where("session", "==", A.session)))
+  ]);
+  const pv = {}; p.forEach((d) => pv[d.id] = d.data());
+  const qs = A.config.questions;
+  const order = (qid) => { const i = qs.findIndex((q) => q.id === qid); return i < 0 ? 99 : i; };
+  const rows = a.docs.map((d) => ({ id: d.id, ...d.data() }))
+    .sort((x, y) => (A.priv[x.teamId]?.label || "").localeCompare(A.priv[y.teamId]?.label || "") || order(x.qid) - order(y.qid));
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [["시간대", "팀", "학교", "학생 이름", "미션 순서", "미션", "답", "제출 시각"].map(cell).join(",")];
+  rows.forEach((r) => {
+    const pr = A.priv[r.teamId] || {}, q = qs.find((x) => x.id === r.qid);
+    const t = r.updatedAt?.toDate ? r.updatedAt.toDate().toLocaleString("ko-KR") : "";
+    lines.push([SESSIONS[A.session], r.label, pr.school, pr.name, order(r.qid) + 1, q ? qTitle(q) : r.qid, summarize(r.kind, r.data, pv[r.id]), t].map(cell).join(","));
+  });
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const el = document.createElement("a");
+  el.href = url; el.download = `AI수학투어_${SESSIONS[A.session]}_답.csv`;
+  document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 20000);
+};
+
+$("rReset").onclick = async () => {
+  const typed = prompt(`${SESSIONS[A.session]}의 모든 답·만족도·진행 상황을 지워요.\n계속하려면 「초기화」라고 써 주세요.`);
+  if (typed !== "초기화") return;
+  const [a, p] = await Promise.all([
+    getDocs(query(collection(db, C.answers), where("session", "==", A.session))),
+    getDocs(query(collection(db, C.priv), where("session", "==", A.session)))
+  ]);
+  const refs = [...a.docs.map((d) => d.ref), ...p.docs.map((d) => d.ref)];
+  for (let i = 0; i < refs.length; i += 400) {
+    const b = writeBatch(db);
+    refs.slice(i, i + 400).forEach((r) => b.delete(r));
+    await b.commit();
+  }
+  const b = writeBatch(db);
+  // round를 올리면 가족 기기에 남아 있던 펜토미노 시작 시각도 새로 시작해요
+  A.teams.forEach((t) => b.update(doc(db, C.teams, t.id), { solved: {}, current: "", round: (t.round || 0) + 1, updatedAt: serverTimestamp() }));
+  await b.commit();
+  toast("초기화했어요.");
+};
+

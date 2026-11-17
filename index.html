@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17795a">
+  <title>가족과 함께하는 AI수학투어</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧭%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🧭 AI수학투어 미션<small>2026. 가족과 함께하는 AI수학투어</small></div>
+    <span id="teamChip" class="chip hidden"></span>
+    <button id="btnList" class="iconbtn hidden" type="button">📋 목록</button>
+  </header>
+
+  <main>
+    <div id="v-loading" class="loading"><div class="spin"></div>불러오는 중…</div>
+
+    <!-- 로그인 -->
+    <section id="v-login" class="hidden">
+      <div class="hero">
+        <span class="badge">순천만국가정원 · 가족 수학 탐험</span>
+        <h1>가족과 함께하는<br>AI수학투어</h1>
+        <p>미션을 해결하고 다른 가족의 답도 엿봐요!</p>
+      </div>
+      <div class="card">
+        <label class="fld">우리 가족은?</label>
+        <div class="seg" id="segSession">
+          <button type="button" data-s="am">☀️ 오전팀</button>
+          <button type="button" data-s="pm">🌇 오후팀</button>
+        </div>
+        <label class="fld" for="selSchool">학생 소속 학교</label>
+        <select id="selSchool" class="inp"><option value="">먼저 오전/오후를 골라 주세요</option></select>
+        <label class="fld" for="inpName">학생 이름</label>
+        <input id="inpName" class="inp" autocomplete="off" placeholder="예) 김순천">
+        <label class="fld" for="inpPw">비밀번호 <small>(선생님께 받은 숫자 4자리)</small></label>
+        <input id="inpPw" class="inp pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+        <div id="loginErr" class="err"></div>
+        <button id="btnLogin" class="btn block" type="button" style="margin-top:16px">미션 시작하기 🚀</button>
+      </div>
+    </section>
+
+    <!-- 미션 -->
+    <section id="v-mission" class="hidden">
+      <div class="progress"><div class="bar"><i id="pBar"></i></div><b id="pText"></b></div>
+      <div class="card">
+        <div class="qhead"><span id="qNum" class="qnum"></span><h2 id="qTitle"></h2></div>
+        <div id="qSolved"></div>
+        <div id="qDesc" class="qdesc"></div>
+        <div id="qInput"></div>
+        <div id="qErr" class="err"></div>
+        <button id="btnSubmit" class="btn orange block" type="button" style="margin-top:16px">답 제출하기</button>
+        <div id="qDone" class="hidden" style="margin-top:12px"></div>
+      </div>
+      <button id="btnPeek" class="peekbtn" type="button">👀 다른 가족의 답 엿보기</button>
+    </section>
+
+    <!-- 미션 목록 -->
+    <section id="v-list" class="hidden">
+      <h2 style="margin:4px 2px 12px">📋 미션 목록</h2>
+      <div id="mList" class="mlist"></div>
+      <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:20px">다른 가족으로 로그인하기</button>
+    </section>
+
+    <!-- 완주 · 수료증 -->
+    <section id="v-done" class="hidden">
+      <div class="card done-hero">
+        <div class="big">🏆</div>
+        <h2 style="margin:6px 0">모든 미션 완주!</h2>
+        <p class="muted" style="margin:0">함께 걷고, 세고, 생각을 나눈 멋진 수학 탐험가 가족이에요.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 6px">🎓 수료증</h3>
+        <label class="fld" for="inpGuardian">함께한 보호자 이름 <small>(선택 · 수료증에만 들어가고 저장되지 않아요)</small></label>
+        <input id="inpGuardian" class="inp" maxlength="12" placeholder="비워 두면 「보호자와 함께」로 나와요">
+        <div id="certBox" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:12px">
+          <button id="btnCertSave" class="btn block grow" type="button">📥 사진으로 저장</button>
+          <button id="btnCertShare" class="btn ghost hidden" type="button">공유</button>
+        </div>
+        <p class="muted" style="margin:8px 0 0">저장이 안 되면 수료증 그림을 길게 눌러 「사진에 저장」을 골라 주세요.</p>
+      </div>
+      <button id="btnBackList" class="btn gray block" type="button">📋 미션 목록으로 (답 고치기·엿보기)</button>
+    </section>
+
+    <div class="footer">만든 곳: 순천수학교육체험센터</div>
+  </main>
+
+  <nav id="navbar" class="navbar hidden">
+    <div class="in">
+      <button id="btnPrev" class="btn gray" type="button">◀ 이전</button>
+      <button id="btnNavList" class="btn ghost" type="button">📋</button>
+      <button id="btnNext" class="btn grow" type="button">다음 미션 ▶</button>
+    </div>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
