@@ -24,9 +24,24 @@ function models_() {
   return list.filter(function (m, i) { return list.indexOf(m) === i; });
 }
 
+// Gemini API 키 찾기 — 속성 이름의 대소문자·앞뒤 공백이 달라도 찾아요.
+// 그래도 없으면 값이 AIza로 시작하는 속성을 키로 써요.
+function apiKey_() {
+  const all = PropertiesService.getScriptProperties().getProperties();
+  const names = Object.keys(all);
+  for (let i = 0; i < names.length; i++) {
+    if (names[i].trim().toUpperCase() === 'GEMINI_API_KEY' && String(all[names[i]]).trim()) return String(all[names[i]]).trim();
+  }
+  for (let i = 0; i < names.length; i++) {
+    if (/^AIza/.test(String(all[names[i]]).trim())) return String(all[names[i]]).trim();
+  }
+  return '';
+}
+
 function doGet() {
-  const p = PropertiesService.getScriptProperties();
-  return json_({ ok: true, model: models_().join(' → '), hasKey: !!p.getProperty('GEMINI_API_KEY') });
+  const names = Object.keys(PropertiesService.getScriptProperties().getProperties());
+  // 키 값은 보여 주지 않고, 저장된 속성 이름만 보여 줘요 (설정 확인용)
+  return json_({ ok: true, model: models_().join(' → '), hasKey: !!apiKey_(), propertyNames: names });
 }
 
 function doPost(e) {
@@ -42,7 +57,7 @@ function doPost(e) {
 }
 
 function countFlowers_(base64) {
-  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const key = apiKey_();
   if (!key) return { ok: false, error: 'GEMINI_API_KEY 스크립트 속성이 없어요' };
   const errors = [];
   const list = models_();
