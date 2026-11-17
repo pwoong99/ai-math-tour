@@ -32,10 +32,9 @@ AI 호출이 안 되면 가족 화면에 「다른 AI 앱으로 센 수」를 �
 
 ### 2-1. Code.gs 자동 배포 (GitHub Actions)
 `gas/` 폴더가 바뀌어 main에 올라오면 `.github/workflows/deploy-gas.yml`이 Apps Script에 코드를 올리고,
-**같은 웹 앱 주소로 새 버전을 배포**해요. 저장소 Settings → Secrets and variables → Actions에 아래 3개가 있어야 해요.
+**같은 웹 앱 주소로 새 버전을 배포**해요. 스크립트 ID는 `.clasp.json`, 배포 ID는 워크플로 파일에 들어 있어요.
+저장소 Settings → Secrets and variables → Actions에 아래 1개만 있으면 돼요.
 - `CLASPRC_JSON` — PC에서 `npx @google/clasp@2.4.2 login` 후 생긴 `.clasprc.json` 파일 내용
-- `GAS_SCRIPT_ID` — Apps Script 프로젝트 설정의 「스크립트 ID」
-- `GAS_DEPLOYMENT_ID` — 배포 → 배포 관리의 「배포 ID」
 그리고 https://script.google.com/home/usersettings 에서 「Google Apps Script API」를 사용으로 켜 둬요.
 
 ### 3. GitHub Pages

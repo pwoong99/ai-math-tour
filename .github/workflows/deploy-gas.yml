@@ -1,6 +1,6 @@
 # gas/ 폴더(Code.gs)가 바뀌어 GitHub에 올라오면 Apps Script에 자동으로 올리고,
 # 같은 웹 앱 주소로 새 버전을 배포해요.
-# 필요한 저장소 Secrets: CLASPRC_JSON, GAS_SCRIPT_ID, GAS_DEPLOYMENT_ID
+# 필요한 저장소 Secret: CLASPRC_JSON (스크립트 ID는 .clasp.json, 배포 ID는 아래 env에 있어요)
 name: Apps Script 자동 배포
 
 on:
@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths: ["gas/**"]
   workflow_dispatch: {}
+
+env:
+  # 지금 쓰는 웹 앱 배포 ID — 이 배포에 새 버전을 올려서 주소가 바뀌지 않아요
+  DEPLOYMENT_ID: AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58
 
 jobs:
   deploy:
@@ -19,11 +23,9 @@ jobs:
         id: check
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
-          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
         run: |
-          if [ -z "$CLASPRC_JSON" ] || [ -z "$GAS_SCRIPT_ID" ] || [ -z "$GAS_DEPLOYMENT_ID" ]; then
-            echo "::warning::Secrets가 아직 없어서 Apps Script 배포를 건너뛰어요."
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::warning::CLASPRC_JSON Secret이 아직 없어서 Apps Script 배포를 건너뛰어요."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -38,12 +40,9 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
-          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
         run: |
           npm install -g @google/clasp@2.4.2
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
-          printf '{"scriptId":"%s","rootDir":"gas"}' "$GAS_SCRIPT_ID" > .clasp.json
           clasp push --force
-          clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
+          clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
           clasp deployments
