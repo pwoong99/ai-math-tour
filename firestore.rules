@@ -47,12 +47,12 @@ service cloud.firestore {
     }
 
     // ───────── AI수학투어 (mathTour_) ─────────
-    // 관리자: 이메일/비밀번호로 로그인한 pwoong99@gmail.com (웹앱 모음 관리자 계정도 허용)
+    // 관리자: pwoong99@ai.jne.kr (이메일/비밀번호 로그인 또는 Google 로그인)
     function isTourAdmin() {
       return request.auth != null
-        && ((request.auth.token.email == 'pwoong99@gmail.com'
-             && request.auth.token.firebase.sign_in_provider == 'password')
-            || isAdmin());
+        && request.auth.token.email == 'pwoong99@ai.jne.kr'
+        && (request.auth.token.firebase.sign_in_provider == 'password'
+            || request.auth.token.email_verified == true);
     }
     function signedIn() { return request.auth != null; }
     function mySession() {

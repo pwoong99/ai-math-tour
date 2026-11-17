@@ -18,7 +18,7 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // 관리자 계정 (firestore.rules에도 같은 주소가 들어 있어요)
-export const ADMIN_EMAIL = "pwoong99@gmail.com";
+export const ADMIN_EMAIL = "pwoong99@ai.jne.kr";
 
 // 컬렉션 이름
 export const C = {

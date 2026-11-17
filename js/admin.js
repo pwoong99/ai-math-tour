@@ -3,7 +3,7 @@ import {
   doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, onSnapshot,
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js";
 import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon } from "./questions.js";
 import { PUZZLES } from "./puzzles.js";
@@ -30,6 +30,11 @@ $("aLogin").onclick = async () => {
   $("aErr").textContent = "";
   try { await signInWithEmailAndPassword(auth, $("aEmail").value.trim(), $("aPw").value); }
   catch (e) { console.warn(e); $("aErr").textContent = "이메일 또는 비밀번호가 맞지 않아요."; }
+};
+$("aGoogle").onclick = async () => {
+  $("aErr").textContent = "";
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) { console.warn(e); $("aErr").textContent = "Google 로그인을 하지 못했어요."; }
 };
 $("aPw").addEventListener("keydown", (e) => { if (e.key === "Enter") $("aLogin").click(); });
 $("btnOut").onclick = () => signOut(auth);
