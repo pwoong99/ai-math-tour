@@ -3,42 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#17795a">
+  <meta name="theme-color" content="#ffffff">
   <title>가족과 함께하는 AI수학투어</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧭%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css?v=1.9">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f6b52'/%3E%3Cpath d='M9 22l5-12 4 8 2-4 3 8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css?v=2.0">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">🧭 AI수학투어 미션<small>2026. 가족과 함께하는 AI수학투어</small></div>
+    <div class="brand">AI수학투어</div>
     <span id="teamChip" class="chip hidden"></span>
-    <button id="btnList" class="iconbtn hidden" type="button">📋 목록</button>
+    <button id="btnList" class="iconbtn hidden" type="button">미션 목록</button>
+    <a id="btnAdmin" class="iconbtn round" href="admin.html" aria-label="관리자" title="관리자">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </a>
   </header>
 
   <main>
-    <div id="v-loading" class="loading"><div class="spin"></div>불러오는 중…</div>
+    <div id="v-loading" class="loading"><div class="spin"></div>불러오는 중</div>
 
     <!-- 로그인 -->
     <section id="v-login" class="hidden">
       <div class="hero">
         <span class="badge">순천만국가정원 · 가족 수학 탐험</span>
         <h1>가족과 함께하는<br>AI수학투어</h1>
-        <p>미션을 해결하고 다른 가족의 답도 엿봐요!</p>
+        <p>미션을 해결하고, 다른 가족들의 답도 함께 살펴봐요.</p>
       </div>
       <div class="card">
-        <label class="fld">우리 가족은?</label>
+        <label class="fld" style="margin-top:0">참여 시간</label>
         <div class="seg" id="segSession">
-          <button type="button" data-s="am">☀️ 오전팀</button>
-          <button type="button" data-s="pm">🌇 오후팀</button>
+          <button type="button" data-s="am">오전팀</button>
+          <button type="button" data-s="pm">오후팀</button>
         </div>
         <label class="fld" for="selSchool">학생 소속 학교</label>
-        <select id="selSchool" class="inp"><option value="">먼저 오전/오후를 골라 주세요</option></select>
+        <select id="selSchool" class="inp"><option value="">먼저 참여 시간을 골라 주세요</option></select>
         <label class="fld" for="inpName">학생 이름</label>
         <input id="inpName" class="inp" autocomplete="off" placeholder="예) 김순천">
-        <label class="fld" for="inpPw">비밀번호 <small>(선생님께 받은 숫자 4자리)</small></label>
-        <input id="inpPw" class="inp pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+        <label class="fld" for="inpPw">비밀번호 <small>선생님께 받은 숫자 4자리</small></label>
+        <input id="inpPw" class="inp pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="····">
         <div id="loginErr" class="err"></div>
-        <button id="btnLogin" class="btn block" type="button" style="margin-top:16px">미션 시작하기 🚀</button>
+        <button id="btnLogin" class="btn block" type="button" style="margin-top:18px">미션 시작하기</button>
       </div>
     </section>
 
@@ -51,38 +54,40 @@
         <div id="qDesc" class="qdesc"></div>
         <div id="qInput"></div>
         <div id="qErr" class="err"></div>
-        <button id="btnSubmit" class="btn orange block" type="button" style="margin-top:16px">답 제출하기</button>
+        <button id="btnSubmit" class="btn orange block" type="button" style="margin-top:18px">답 제출하기</button>
         <div id="qDone" class="hidden" style="margin-top:12px"></div>
       </div>
-      <button id="btnPeek" class="peekbtn" type="button">👀 다른 가족의 답 엿보기</button>
+      <button id="btnPeek" class="peekbtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        모두의 답 보기</button>
     </section>
 
     <!-- 미션 목록 -->
     <section id="v-list" class="hidden">
-      <h2 style="margin:4px 2px 12px">📋 미션 목록</h2>
+      <h2 style="margin:4px 2px 14px;font-size:22px">미션 목록</h2>
       <div id="mList" class="mlist"></div>
-      <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:20px">다른 가족으로 로그인하기</button>
+      <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:24px">다른 가족으로 로그인하기</button>
     </section>
 
     <!-- 완주 · 수료증 -->
     <section id="v-done" class="hidden">
       <div class="card done-hero">
-        <div class="big">🏆</div>
-        <h2 style="margin:6px 0">모든 미션 완주!</h2>
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h2 style="margin:6px 0 4px;font-size:22px">모든 미션 완주</h2>
         <p class="muted" style="margin:0">함께 걷고, 세고, 생각을 나눈 멋진 수학 탐험가 가족이에요.</p>
       </div>
       <div class="card">
-        <h3 style="margin:0 0 6px">🎓 수료증</h3>
-        <label class="fld" for="inpGuardian">함께한 보호자 이름 <small>(선택 · 수료증에만 들어가고 저장되지 않아요)</small></label>
+        <h3 style="margin:0 0 4px">수료증</h3>
+        <label class="fld" for="inpGuardian">함께한 보호자 이름 <small>선택 · 수료증에만 들어가고 저장되지 않아요</small></label>
         <input id="inpGuardian" class="inp" maxlength="12" placeholder="비워 두면 「보호자와 함께」로 나와요">
-        <div id="certBox" style="margin-top:14px"></div>
-        <div class="row" style="margin-top:12px">
-          <button id="btnCertSave" class="btn block grow" type="button">📥 사진으로 저장</button>
+        <div id="certBox" style="margin-top:16px"></div>
+        <div class="row" style="margin-top:14px">
+          <button id="btnCertSave" class="btn block grow" type="button">사진으로 저장</button>
           <button id="btnCertShare" class="btn ghost hidden" type="button">공유</button>
         </div>
         <p class="muted" style="margin:8px 0 0">저장이 안 되면 수료증 그림을 길게 눌러 「사진에 저장」을 골라 주세요.</p>
       </div>
-      <button id="btnBackList" class="btn gray block" type="button">📋 미션 목록으로 (답 고치기·엿보기)</button>
+      <button id="btnBackList" class="btn ghost block" type="button">미션 목록으로 (답 고치기 · 모두의 답)</button>
     </section>
 
     <div class="footer">만든 곳: 순천수학교육체험센터 · <span class="ver"></span></div>
@@ -90,12 +95,12 @@
 
   <nav id="navbar" class="navbar hidden">
     <div class="in">
-      <button id="btnPrev" class="btn gray" type="button">◀ 이전</button>
-      <button id="btnNavList" class="btn ghost" type="button">📋</button>
-      <button id="btnNext" class="btn grow" type="button">다음 미션 ▶</button>
+      <button id="btnPrev" class="btn gray" type="button">이전</button>
+      <button id="btnNavList" class="btn ghost" type="button">목록</button>
+      <button id="btnNext" class="btn grow" type="button">다음 미션</button>
     </div>
   </nav>
 
-  <script type="module" src="js/app.js?v=1.9"></script>
+  <script type="module" src="js/app.js?v=2.0"></script>
 </body>
 </html>

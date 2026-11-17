@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=1.9";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon } from "./questions.js?v=1.9";
-import { PUZZLES } from "./puzzles.js?v=1.9";
-import { miniGrid } from "./widgets.js?v=1.9";
-import { renderPeek } from "./peek.js?v=1.9";
-import { drawRoster, savePng } from "./cert.js?v=1.9";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.0";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc } from "./questions.js?v=2.0";
+import { PUZZLES } from "./puzzles.js?v=2.0";
+import { miniGrid } from "./widgets.js?v=2.0";
+import { renderPeek } from "./peek.js?v=2.0";
+import { drawRoster, savePng } from "./cert.js?v=2.0";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -22,7 +22,6 @@ onAuthStateChanged(auth, async (u) => {
   const ok = u && !u.isAnonymous && u.email === ADMIN_EMAIL;
   $("a-login").classList.toggle("hidden", ok);
   $("a-main").classList.toggle("hidden", !ok);
-  $("sessSeg").classList.toggle("hidden", !ok);
   $("btnOut").classList.toggle("hidden", !ok);
   if (u && !ok && !u.isAnonymous) { $("aErr").textContent = "관리자 계정이 아니에요."; await signOut(auth); }
   if (ok) start();
@@ -53,8 +52,7 @@ async function start() {
     if (A.tab === "questions") renderQuestions(false);
     if (A.tab === "progress") renderProgress();
   });
-  $("sessSeg").querySelectorAll("button").forEach((b) => b.onclick = () => setSession(b.dataset.s));
-  // 팀 추가 칸의 시간대 선택 — 고르면 화면 전체가 그 시간대로 바뀌어요
+  // 팀 관리·진행 현황·모두의 답 탭 위쪽의 시간대 선택 (세 탭이 같은 시간대를 함께 써요)
   document.querySelectorAll(".sessPick button").forEach((b) => b.onclick = () => { if (b.dataset.s !== A.session) setSession(b.dataset.s); });
   $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => setTab(b.dataset.t));
   setSession(A.session);
@@ -64,9 +62,6 @@ async function start() {
 function setSession(s) {
   A.session = s;
   localStorage.setItem("mt_admin_session", s);
-  $("sessSeg").querySelectorAll("button").forEach((b) => b.style.background = b.dataset.s === s ? "#fff" : "");
-  $("sessSeg").querySelectorAll("button").forEach((b) => b.style.color = b.dataset.s === s ? "#17795a" : "");
-  $("sessTitle").textContent = `${s === "am" ? "☀️" : "🌇"} ${SESSIONS[s]}`;
   $("teamSess").textContent = `· ${SESSIONS[s]}`;
   document.querySelectorAll(".sessPick button").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
   A.unsub.forEach((u) => u()); A.unsub = [];
@@ -79,7 +74,6 @@ function setSession(s) {
     A.priv = {}; snap.forEach((d) => A.priv[d.id] = d.data());
     renderTeams(); if (A.tab === "progress") renderProgress();
   }));
-  $("rScale").textContent = $("rPento").textContent = "「결과 불러오기」를 눌러 주세요.";
   if (A.tab === "peek") openAdminPeek();
 }
 function setTab(t) {
@@ -171,7 +165,7 @@ function renderTeams() {
       <td><b>${esc(t.label)}</b></td>
       <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="school" value="${esc(t.school || "")}"></td>
       <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="name" value="${esc(t.name || "")}"></td>
-      <td class="c"><div class="row" style="gap:4px;justify-content:center"><input class="inp" style="padding:6px;font-size:16px;width:80px;text-align:center;font-weight:800" data-f="pw" inputmode="numeric" maxlength="4" value="${esc(t.pw ?? "")}"><button class="btn small gray" data-a="rand" type="button">🎲</button></div></td>
+      <td class="c"><div class="row" style="gap:4px;justify-content:center"><input class="inp" style="padding:6px;font-size:16px;width:80px;text-align:center;font-weight:800" data-f="pw" inputmode="numeric" maxlength="4" value="${esc(t.pw ?? "")}"><button class="btn small gray" data-a="rand" type="button">랜덤</button></div></td>
       <td class="c">${Object.keys(t.solved || {}).length}</td>
       <td class="c"><button class="btn small" data-a="save" type="button">저장</button> <button class="btn small red" data-a="del" type="button">삭제</button></td></tr>`).join("")
     || `<tr><td colspan="6" class="c muted" style="padding:24px">아직 등록된 팀이 없어요.</td></tr>`}</tbody>`;
@@ -241,13 +235,13 @@ function renderProgress() {
   };
   $("pgStats").innerHTML = [[list.length + "팀", "참여 팀"], [done + "팀", "완주"], [list.length ? Math.round(list.reduce((a, t) => a + qs.filter((q) => t.solved?.[q.id]).length, 0) / list.length * 10) / 10 + "개" : "-", "팀당 평균 해결"]]
     .map(([v, t]) => `<div class="stat"><b>${v}</b><span>${t}</span></div>`).join("");
-  $("pgTbl").innerHTML = `<thead><tr><th>팀</th><th>학교 · 이름</th><th>지금 미션</th><th class="c">해결</th>${qs.map((q, i) => `<th class="c" title="${esc(qTitle(q))}">${i + 1}<br>${qIcon(q)}</th>`).join("")}<th>최근</th></tr></thead>
+  $("pgTbl").innerHTML = `<thead><tr><th>팀</th><th>학교 · 이름</th><th>지금 미션</th><th class="c">해결</th>${qs.map((q, i) => `<th class="c" title="${esc(qTitle(q))}">${i + 1}</th>`).join("")}<th>최근</th></tr></thead>
     <tbody>${list.map((t) => {
       const curI = qs.findIndex((q) => q.id === t.current);
       const n = qs.filter((q) => t.solved?.[q.id]).length;
       return `<tr><td><b>${esc(t.label)}</b></td><td>${esc(t.school || "")} ${esc(t.name || "")}</td>
-        <td>${curI >= 0 ? `${curI + 1}. ${esc(qTitle(qs[curI]))}` : n === qs.length && n ? "🏆 완주" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
-        ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}">${ok ? "✔" : cur ? "👉" : ""}</td>`; }).join("")}
+        <td>${curI >= 0 ? `${curI + 1}. ${esc(qTitle(qs[curI]))}` : n === qs.length && n ? "완주" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
+        ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}">${ok ? "✓" : cur ? "●" : ""}</td>`; }).join("")}
         <td class="muted">${ago(t.updatedAt)}</td></tr>`;
     }).join("")}
     <tr style="background:#f3f0e6"><td colspan="4"><b>미션별 해결 팀 수</b></td>${qs.map((q) => `<td class="c"><b>${list.filter((t) => t.solved?.[q.id]).length}</b></td>`).join("")}<td></td></tr></tbody>`;
@@ -261,13 +255,13 @@ function renderQuestions(fillSettings) {
   $("qList").innerHTML = d.map((q, i) => {
     if (!q.hidden) no++;
     return `<div class="qrow ${q.hidden ? "off" : ""}" data-i="${i}">
-      <div class="no">${q.hidden ? "-" : no}</div><div style="font-size:24px">${qIcon(q)}</div>
+      <div class="no">${q.hidden ? "-" : no}</div>
       <div class="tt"><input data-f="title" value="${esc(qTitle(q))}">
         <textarea data-f="desc" rows="2">${esc(qDesc(q))}</textarea>
         <div class="muted" style="font-size:12px">${isBuiltin(q) ? "기본 미션" : "추가한 미션 · " + CUSTOM_KINDS[q.kind]}${q.kind === "scale" ? " · 관리자만 보는 답" : ""}</div></div>
       <div style="display:grid;gap:4px">
-        <button class="btn small gray" data-a="up" type="button">↑</button>
-        <button class="btn small gray" data-a="down" type="button">↓</button></div>
+        <button class="btn small gray" data-a="up" type="button" aria-label="위로">위</button>
+        <button class="btn small gray" data-a="down" type="button" aria-label="아래로">아래</button></div>
       <div style="display:grid;gap:4px">
         <button class="btn small ${q.hidden ? "" : "ghost"}" data-a="hide" type="button">${q.hidden ? "보이기" : "숨기기"}</button>
         ${isBuiltin(q) ? "" : `<button class="btn small red" data-a="del" type="button">삭제</button>`}</div></div>`;
@@ -334,7 +328,7 @@ function cipherCheck() {
   const t = $("sText").value.toUpperCase(), a = $("sAns").value.toUpperCase().trim(), k = Number($("sAnsK").value || $("sKey").value);
   if (!t || !a || !Number.isFinite(k) || !k) { $("sCheck").textContent = ""; return; }
   const dec = t.replace(/[A-Z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 65 - k + 260) % 26 + 65));
-  $("sCheck").innerHTML = dec.trim() === a ? `✅ 열쇠 ${k}로 풀면 정답 문장과 같아요.` : `⚠️ 열쇠 ${k}로 풀면 「${esc(dec)}」 — 정답 문장과 달라요. 확인해 주세요.`;
+  $("sCheck").innerHTML = dec.trim() === a ? `열쇠 ${k}로 풀면 정답 문장과 같아요.` : `확인 필요: 열쇠 ${k}로 풀면 「${esc(dec)}」 — 정답 문장과 달라요. 확인해 주세요.`;
 }
 ["sText", "sAns", "sAnsK", "sKey"].forEach((id) => $(id).addEventListener("input", cipherCheck));
 
@@ -360,32 +354,55 @@ $("sGasTest").onclick = async () => {
   $("sGasMsg").textContent = "확인 중…";
   try {
     const j = await (await fetch(u)).json();
-    $("sGasMsg").textContent = j.ok ? `✅ 연결됨 (${j.model || "Gemini"}${j.hasKey ? "" : " · ⚠️ API 키가 없어요"})` : "⚠️ 응답이 이상해요";
-  } catch { $("sGasMsg").textContent = "❌ 연결하지 못했어요. 배포 설정(액세스: 모든 사용자)을 확인해 주세요."; }
+    $("sGasMsg").textContent = j.ok ? `연결됨 (${j.model || "Gemini"}${j.hasKey ? "" : " · API 키가 없어요"})` : "응답이 이상해요";
+  } catch { $("sGasMsg").textContent = "연결하지 못했어요. 배포 설정(액세스: 모든 사용자)을 확인해 주세요."; }
 };
 
-/* ── 결과 ── */
+/* ── 결과 (오전·오후 함께) ── */
+let allPriv = {}; // 두 시간대 학교·이름
+async function loadAllPriv() {
+  const snap = await getDocs(collection(db, C.teamsPrivate));
+  allPriv = {}; snap.forEach((d) => allPriv[d.id] = d.data());
+}
+const sessName = (s) => SESSIONS[s] || s;
+const bySessLabel = (a, b) => (a.session || "").localeCompare(b.session || "") || a.label.length - b.label.length || a.label.localeCompare(b.label);
 $("rLoad").onclick = loadResults;
 async function loadResults() {
-  const snap = await getDocs(query(collection(db, C.priv), where("session", "==", A.session)));
-  const rows = snap.docs.map((d) => d.data());
-  const name = (r) => { const p = A.priv[r.teamId]; return p ? `${esc(p.school)} ${esc(p.name)}` : ""; };
-  const sc = rows.filter((r) => r.kind === "scale").sort((a, b) => a.label.localeCompare(b.label));
-  if (!sc.length) $("rScale").innerHTML = "아직 답한 팀이 없어요.";
-  else {
-    const avg = sc.reduce((a, r) => a + r.value, 0) / sc.length;
-    const dist = [1, 2, 3, 4, 5].map((v) => sc.filter((r) => r.value === v).length);
-    const mx = Math.max(...dist, 1);
-    $("rScale").innerHTML = `<div class="stat-row"><div class="stat"><b>${avg.toFixed(2)}점</b><span>평균 (5점 만점)</span></div><div class="stat"><b>${sc.length}팀</b><span>응답</span></div></div>
-      ${[5, 4, 3, 2, 1].map((v) => `<div class="row" style="margin:4px 0"><b style="width:40px">${v}점</b><div class="grow" style="background:#f0ece1;border-radius:99px;height:20px"><i style="display:block;height:100%;width:${dist[v - 1] / mx * 100}%;background:#f08a24;border-radius:99px"></i></div><b style="width:40px;text-align:right">${dist[v - 1]}</b></div>`).join("")}
-      <div class="tbl-wrap" style="margin-top:10px;max-height:300px"><table class="t"><thead><tr><th>팀</th><th>학교 · 이름</th><th class="c">점수</th></tr></thead>
-      <tbody>${sc.map((r) => `<tr><td>${esc(r.label)}</td><td>${name(r)}</td><td class="c"><b>${r.value}</b></td></tr>`).join("")}</tbody></table></div>`;
-  }
-  const pt = rows.filter((r) => r.kind === "pentoTime").sort((a, b) => a.seconds - b.seconds);
-  const f = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
-  $("rPento").innerHTML = pt.length ? `<div class="muted" style="margin-bottom:6px">${A.config.pentoTimePublic ? "🔓 가족 엿보기에 공개 중" : "🔒 비공개 (문제 설정에서 공개할 수 있어요)"}</div>
-    <div class="tbl-wrap" style="max-height:420px"><table class="t"><thead><tr><th class="c">순위</th><th>팀</th><th>학교 · 이름</th><th>퍼즐</th><th class="c">걸린 시간</th></tr></thead>
-    <tbody>${pt.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td>${esc(PUZZLES[r.puzzle]?.name || "")}</td><td class="c"><b>${f(r.seconds)}</b></td></tr>`).join("")}</tbody></table></div>` : "아직 완성한 팀이 없어요.";
+  $("rLoad").disabled = true;
+  try {
+    const [snap] = await Promise.all([getDocs(collection(db, C.priv)), loadAllPriv()]);
+    const rows = snap.docs.map((d) => d.data());
+    const name = (r) => { const p = allPriv[r.teamId]; return p ? `${esc(p.school)} ${esc(p.name)}` : ""; };
+    const avgOf = (a) => a.length ? (a.reduce((x, r) => x + r.value, 0) / a.length).toFixed(2) + "점" : "-";
+
+    // 만족도
+    const sc = rows.filter((r) => r.kind === "scale").sort(bySessLabel);
+    if (!sc.length) $("rScale").innerHTML = "아직 답한 팀이 없어요.";
+    else {
+      const am = sc.filter((r) => r.session === "am"), pm = sc.filter((r) => r.session === "pm");
+      const dist = (list) => [1, 2, 3, 4, 5].map((v) => list.filter((r) => r.value === v).length);
+      const dAll = dist(sc), dAm = dist(am), dPm = dist(pm), mx = Math.max(...dAll, 1);
+      $("rScale").innerHTML = `<div class="stat-row">
+          <div class="stat"><b>${avgOf(sc)}</b><span>전체 평균 · ${sc.length}팀</span></div>
+          <div class="stat"><b>${avgOf(am)}</b><span>오전팀 평균 · ${am.length}팀</span></div>
+          <div class="stat"><b>${avgOf(pm)}</b><span>오후팀 평균 · ${pm.length}팀</span></div></div>
+        <div class="legend"><span><i style="background:var(--green)"></i>오전팀</span><span><i style="background:var(--orange)"></i>오후팀</span></div>
+        ${[5, 4, 3, 2, 1].map((v) => `<div class="row" style="margin:6px 0"><b style="width:40px">${v}점</b>
+          <div class="grow" style="background:#eeede8;border-radius:99px;height:16px;display:flex;overflow:hidden">
+            <i style="display:block;height:100%;width:${dAm[v - 1] / mx * 100}%;background:var(--green)"></i>
+            <i style="display:block;height:100%;width:${dPm[v - 1] / mx * 100}%;background:var(--orange)"></i></div>
+          <span style="width:110px;text-align:right" class="muted">오전 ${dAm[v - 1]} · 오후 ${dPm[v - 1]}</span></div>`).join("")}
+        <div class="tbl-wrap" style="margin-top:12px;max-height:340px"><table class="t"><thead><tr><th>시간대</th><th>팀</th><th>학교 · 이름</th><th class="c">점수</th></tr></thead>
+        <tbody>${sc.map((r) => `<tr><td>${sessName(r.session)}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td class="c"><b>${r.value}</b></td></tr>`).join("")}</tbody></table></div>`;
+    }
+
+    // 펜토미노 시간
+    const pt = rows.filter((r) => r.kind === "pentoTime").sort((a, b) => a.seconds - b.seconds);
+    const f = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
+    $("rPento").innerHTML = pt.length ? `<div class="muted" style="margin-bottom:8px">${A.config.pentoTimePublic ? "가족 화면 「모두의 답」에 공개 중이에요." : "비공개예요. 문제 설정에서 공개할 수 있어요."}</div>
+      <div class="tbl-wrap" style="max-height:420px"><table class="t"><thead><tr><th class="c">순위</th><th>시간대</th><th>팀</th><th>학교 · 이름</th><th>퍼즐</th><th class="c">걸린 시간</th></tr></thead>
+      <tbody>${pt.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${sessName(r.session)}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td>${esc(PUZZLES[r.puzzle]?.name || "")}</td><td class="c"><b>${f(r.seconds)}</b></td></tr>`).join("")}</tbody></table></div>` : "아직 완성한 팀이 없어요.";
+  } finally { $("rLoad").disabled = false; }
 }
 
 function summarize(kind, d, priv) {
@@ -409,64 +426,67 @@ function summarize(kind, d, priv) {
   }
 }
 $("rCsv").onclick = async () => {
-  const [a, p] = await Promise.all([
-    getDocs(query(collection(db, C.answers), where("session", "==", A.session))),
-    getDocs(query(collection(db, C.priv), where("session", "==", A.session)))
-  ]);
+  const [a, p] = await Promise.all([getDocs(collection(db, C.answers)), getDocs(collection(db, C.priv)), loadAllPriv()]);
   const pv = {}; p.forEach((d) => pv[d.id] = d.data());
   const qs = A.config.questions;
   const order = (qid) => { const i = qs.findIndex((q) => q.id === qid); return i < 0 ? 99 : i; };
-  const rows = a.docs.map((d) => ({ id: d.id, ...d.data() }))
-    .sort((x, y) => (A.priv[x.teamId]?.label || "").localeCompare(A.priv[y.teamId]?.label || "") || order(x.qid) - order(y.qid));
+  const rows = a.docs.map((d) => ({ id: d.id, ...d.data() })).sort((x, y) => bySessLabel(x, y) || order(x.qid) - order(y.qid));
   const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = [["시간대", "팀", "학교", "학생 이름", "미션 순서", "미션", "답", "제출 시각"].map(cell).join(",")];
   rows.forEach((r) => {
-    const pr = A.priv[r.teamId] || {}, q = qs.find((x) => x.id === r.qid);
+    const pr = allPriv[r.teamId] || {}, q = qs.find((x) => x.id === r.qid);
     const t = r.updatedAt?.toDate ? r.updatedAt.toDate().toLocaleString("ko-KR") : "";
-    lines.push([SESSIONS[A.session], r.label, pr.school, pr.name, order(r.qid) + 1, q ? qTitle(q) : r.qid, summarize(r.kind, r.data, pv[r.id]), t].map(cell).join(","));
+    lines.push([sessName(r.session), r.label, pr.school, pr.name, order(r.qid) + 1, q ? qTitle(q) : r.qid, summarize(r.kind, r.data, pv[r.id]), t].map(cell).join(","));
   });
-  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const el = document.createElement("a");
-  el.href = url; el.download = `AI수학투어_${SESSIONS[A.session]}_답.csv`;
+  el.href = url; el.download = "AI수학투어_오전오후_답.csv";
   document.body.appendChild(el); el.click(); el.remove();
   setTimeout(() => URL.revokeObjectURL(url), 20000);
 };
 
 $("rReset").onclick = async () => {
-  const typed = prompt(`${SESSIONS[A.session]}의 모든 답·만족도·진행 상황을 지워요.\n계속하려면 「초기화」라고 써 주세요.`);
+  const which = $("rResetSess").value;
+  const sessions = which === "all" ? ["am", "pm"] : [which];
+  const label = which === "all" ? "오전팀과 오후팀" : sessName(which);
+  const typed = prompt(`${label}의 모든 답·만족도·진행 상황을 지워요.\n계속하려면 「초기화」라고 써 주세요.`);
   if (typed !== "초기화") return;
-  const [a, p] = await Promise.all([
-    getDocs(query(collection(db, C.answers), where("session", "==", A.session))),
-    getDocs(query(collection(db, C.priv), where("session", "==", A.session)))
-  ]);
-  const refs = [...a.docs.map((d) => d.ref), ...p.docs.map((d) => d.ref)];
-  for (let i = 0; i < refs.length; i += 400) {
+  for (const sess of sessions) {
+    const [a, p, t] = await Promise.all([
+      getDocs(query(collection(db, C.answers), where("session", "==", sess))),
+      getDocs(query(collection(db, C.priv), where("session", "==", sess))),
+      getDocs(query(collection(db, C.teams), where("session", "==", sess)))
+    ]);
+    const refs = [...a.docs.map((d) => d.ref), ...p.docs.map((d) => d.ref)];
+    for (let i = 0; i < refs.length; i += 400) {
+      const b = writeBatch(db);
+      refs.slice(i, i + 400).forEach((r) => b.delete(r));
+      await b.commit();
+    }
     const b = writeBatch(db);
-    refs.slice(i, i + 400).forEach((r) => b.delete(r));
+    // round를 올리면 가족 기기에 남아 있던 펜토미노 시작 시각도 새로 시작해요
+    t.forEach((d) => b.update(d.ref, { solved: {}, current: "", round: (d.data().round || 0) + 1, updatedAt: serverTimestamp() }));
     await b.commit();
   }
-  const b = writeBatch(db);
-  // round를 올리면 가족 기기에 남아 있던 펜토미노 시작 시각도 새로 시작해요
-  A.teams.forEach((t) => b.update(doc(db, C.teams, t.id), { solved: {}, current: "", round: (t.round || 0) + 1, updatedAt: serverTimestamp() }));
-  await b.commit();
-  toast("초기화했어요.");
+  toast(`${label}의 답을 초기화했어요.`);
+  $("rScale").textContent = $("rPento").textContent = "「결과 불러오기」를 눌러 주세요.";
 };
 
 
-/* ── 엿보기 모아보기 ── */
+/* ── 모두의 답 (관리자) ── */
 let pkUnsub = [], pkQid = null;
 function closeAdminPeek() { pkUnsub.forEach((u) => u()); pkUnsub = []; }
 function openAdminPeek() {
   const qs = A.config.questions.filter((q) => !q.hidden);
   if (!qs.find((q) => q.id === pkQid)) pkQid = qs[0]?.id;
-  $("pkPick").innerHTML = qs.map((q, i) => `<button type="button" class="btn small ${q.id === pkQid ? "" : "gray"}" data-q="${q.id}" title="${esc(qTitle(q))}">${i + 1}. ${qIcon(q)} ${esc(qTitle(q))}</button>`).join("");
+  $("pkPick").innerHTML = qs.map((q, i) => `<button type="button" class="btn small ${q.id === pkQid ? "" : "gray"}" data-q="${q.id}" title="${esc(qTitle(q))}">${i + 1}. ${esc(qTitle(q))}</button>`).join("");
   $("pkPick").querySelectorAll("button").forEach((b) => b.onclick = () => { pkQid = b.dataset.q; openAdminPeek(); });
   closeAdminPeek();
   const q = qs.find((x) => x.id === pkQid);
   const box = $("pkBox");
   if (!q) { box.innerHTML = `<div class="empty">보이는 미션이 없어요.</div>`; return; }
-  box.innerHTML = `<div class="sheet-head" style="position:static"><h3>👀 ${qs.indexOf(q) + 1}. ${esc(qTitle(q))} <span class="muted">· ${SESSIONS[A.session]}</span></h3></div><div class="pk"><div class="loading"><div class="spin"></div></div></div>`;
+  box.innerHTML = `<div class="sheet-head" style="position:static"><h3><small>모두의 답 · ${SESSIONS[A.session]}</small>${qs.indexOf(q) + 1}. ${esc(qTitle(q))}</h3></div><div class="pk"><div class="loading"><div class="spin"></div></div></div>`;
   const body = box.querySelector(".pk");
   let list = [], priv = [];
   const named = (a) => {
@@ -497,10 +517,10 @@ function drawScalePeek(el, rows) {
     <div class="chart">${[5, 4, 3, 2, 1].map((v) => {
       const items = rows.filter((r) => r.value === v);
       return `<div class="row" style="margin:8px 0;align-items:flex-start"><b style="width:70px">${faces[v - 1]} ${v}점</b>
-        <div class="grow"><div style="background:#f0ece1;border-radius:99px;height:20px"><i style="display:block;height:100%;width:${items.length / rows.length * 100}%;background:#f08a24;border-radius:99px"></i></div>
+        <div class="grow"><div style="background:#eeede8;border-radius:99px;height:20px"><i style="display:block;height:100%;width:${items.length / rows.length * 100}%;background:#c9752c;border-radius:99px"></i></div>
         <div class="tchips" style="margin-top:4px">${items.map((r) => `<span class="tchip">${esc(r.label)}</span>`).join("")}</div></div>
         <b style="width:40px;text-align:right">${items.length}</b></div>`;
-    }).join("")}</div><div class="muted">🔒 만족도는 가족 엿보기에는 나오지 않고 관리자에게만 보여요.</div>`;
+    }).join("")}</div><div class="muted">만족도는 가족 화면에는 나오지 않고 관리자에게만 보여요.</div>`;
 }
 $("pkFull").onclick = () => {
   const el = $("pkBox");

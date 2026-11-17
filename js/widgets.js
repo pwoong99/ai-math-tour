@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=1.9";
-import { esc, toast } from "./fb.js?v=1.9";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=2.0";
+import { esc, toast } from "./fb.js?v=2.0";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -17,34 +17,34 @@ export function cipherWheel(el, startK = 0) {
   let outer = "", inner = "";
   for (let i = 0; i < 26; i++) {
     const [x, y] = pos(132, i);
-    outer += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#22305a">${ABC[i]}</text>`;
+    outer += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#1d2321">${ABC[i]}</text>`;
     const [x2, y2] = pos(96, i);
-    inner += `<text x="${x2}" y="${y2}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="800" fill="${i === 0 ? "#d64545" : "#0f5c44"}">${ABC[i]}</text>`;
+    inner += `<text x="${x2}" y="${y2}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="800" fill="${i === 0 ? "#b9433b" : "#154f3c"}">${ABC[i]}</text>`;
     const [lx1, ly1] = pos(116, i + 0.5), [lx2, ly2] = pos(150, i + 0.5);
-    outer += `<line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="#c9cfe0" stroke-width="1"/>`;
+    outer += `<line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="#dcdad3" stroke-width="1"/>`;
   }
   el.innerHTML = `
     <div class="wheel-wrap">
       <svg viewBox="0 0 ${S} ${S}">
-        <circle cx="${cx}" cy="${cy}" r="152" fill="#eef1fb" stroke="#22305a" stroke-width="3"/>
-        <circle cx="${cx}" cy="${cy}" r="116" fill="#fff" stroke="#22305a" stroke-width="2"/>
+        <circle cx="${cx}" cy="${cy}" r="152" fill="#f5f5f2" stroke="#1d2321" stroke-width="3"/>
+        <circle cx="${cx}" cy="${cy}" r="116" fill="#fff" stroke="#1d2321" stroke-width="2"/>
         ${outer}
         <g class="inner" style="transform-origin:${cx}px ${cy}px;transition:transform .25s">
-          <circle cx="${cx}" cy="${cy}" r="114" fill="#e3f3ec" stroke="#17795a" stroke-width="2"/>
+          <circle cx="${cx}" cy="${cy}" r="114" fill="#eaf2ee" stroke="#1f6b52" stroke-width="2"/>
           ${inner}
-          <circle cx="${cx}" cy="${cy}" r="70" fill="#fff" stroke="#17795a" stroke-width="2"/>
+          <circle cx="${cx}" cy="${cy}" r="70" fill="#fff" stroke="#1f6b52" stroke-width="2"/>
         </g>
-        <path d="M${cx} 4 l-9 -0 l9 14 l9 -14z" fill="#f08a24"/>
-        <text x="${cx}" y="${cy - 14}" text-anchor="middle" font-size="13" font-weight="700" fill="#5d6b69">바깥 = 암호</text>
-        <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" font-weight="700" fill="#17795a">안쪽 = 원래 글자</text>
-        <text class="kt" x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#22305a"></text>
+        <path d="M${cx} 4 l-9 -0 l9 14 l9 -14z" fill="#c9752c"/>
+        <text x="${cx}" y="${cy - 14}" text-anchor="middle" font-size="13" font-weight="700" fill="#6b716e">바깥 = 암호</text>
+        <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" font-weight="700" fill="#1f6b52">안쪽 = 원래 글자</text>
+        <text class="kt" x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#1d2321"></text>
       </svg>
       <div class="wheel-ctl">
-        <button type="button" class="btn small gray" data-d="-1">◀ 한 칸</button>
+        <button type="button" class="btn small gray" data-d="-1">‹ 한 칸</button>
         <b class="kv"></b>
-        <button type="button" class="btn small gray" data-d="1">한 칸 ▶</button>
+        <button type="button" class="btn small gray" data-d="1">한 칸 ›</button>
       </div>
-      <div class="muted">안쪽 원을 손가락으로 돌려도 돼요. 빨간 <b style="color:#d64545">A</b>가 가리키는 바깥 글자가 열쇠예요.</div>
+      <div class="muted">안쪽 원을 손가락으로 돌려도 돼요. 빨간 <b style="color:#b9433b">A</b>가 가리키는 바깥 글자가 열쇠예요.</div>
     </div>`;
   const g = el.querySelector(".inner"), kv = el.querySelector(".kv"), kt = el.querySelector(".kt");
   let rot = k * step;
@@ -198,8 +198,8 @@ export function pentoBoard(el, rows, { initialGrid = null, onSolved = () => {}, 
     <div class="pento-board"></div>
     <div class="sel-area"><div class="pv"><span class="muted">아래에서 조각을 골라 주세요</span></div>
       <div class="ctl">
-        <button type="button" class="btn small gray" data-a="rot">⟳ 돌리기</button>
-        <button type="button" class="btn small gray" data-a="flip">⇋ 뒤집기</button>
+        <button type="button" class="btn small gray" data-a="rot">돌리기</button>
+        <button type="button" class="btn small gray" data-a="flip">뒤집기</button>
       </div></div>
     <div class="tray"></div>
     <div class="muted" style="margin-top:6px">조각을 골라 판 위로 끌어다 놓아요. 판에 놓은 조각을 톡 누르면 다시 빼낼 수 있어요.</div>`;

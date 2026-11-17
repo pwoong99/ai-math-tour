@@ -57,7 +57,7 @@ AI 호출이 안 되면 가족 화면에 「다른 AI 앱으로 센 수」를 �
 | `mathTour_sessions/{기기}` | 기기 ↔ 팀 연결 | 본인 기기·관리자 |
 | `mathTour_teams` | A팀… 이름, 진행 상황 | 접속한 사람 |
 | `mathTour_teamsPrivate` | 학교·학생 이름·비밀번호 | 관리자만 |
-| `mathTour_answers` | 팀별 답(엿보기) | 접속한 사람 |
+| `mathTour_answers` | 팀별 답(모두의 답) | 접속한 사람 |
 | `mathTour_private` | 만족도·펜토미노 걸린 시간 | 관리자만 (시간은 공개 설정 시 가족도) |
 
 ## 파일
@@ -65,7 +65,7 @@ AI 호출이 안 되면 가족 화면에 「다른 AI 앱으로 센 수」를 �
 - `js/questions.js` — 기본 미션 11개, 펜토미노 조각
 - `js/puzzles.js` — 펜토미노 퍼즐 책자 18문제 모양
 - `js/inputs.js` — 미션별 입력 화면
-- `js/peek.js` — 미션별 엿보기 화면
+- `js/peek.js` — 미션별 모두의 답 화면
 - `js/widgets.js` — 시저 암호판, 사진 자르기, 펜토미노 판
 - `js/cert.js` — 수료증·명단 그림
 - `js/app.js` / `js/admin.js` — 가족 화면 / 관리자 화면
