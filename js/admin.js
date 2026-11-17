@@ -53,6 +53,8 @@ async function start() {
     if (A.tab === "progress") renderProgress();
   });
   $("sessSeg").querySelectorAll("button").forEach((b) => b.onclick = () => setSession(b.dataset.s));
+  // 팀 추가 칸의 시간대 선택 — 고르면 화면 전체가 그 시간대로 바뀌어요
+  document.querySelectorAll(".sessPick button").forEach((b) => b.onclick = () => { if (b.dataset.s !== A.session) setSession(b.dataset.s); });
   $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => setTab(b.dataset.t));
   setSession(A.session);
   setTab("teams");
@@ -64,6 +66,8 @@ function setSession(s) {
   $("sessSeg").querySelectorAll("button").forEach((b) => b.style.background = b.dataset.s === s ? "#fff" : "");
   $("sessSeg").querySelectorAll("button").forEach((b) => b.style.color = b.dataset.s === s ? "#17795a" : "");
   $("sessTitle").textContent = `${s === "am" ? "☀️" : "🌇"} ${SESSIONS[s]}`;
+  $("teamSess").textContent = `· ${SESSIONS[s]}`;
+  document.querySelectorAll(".sessPick button").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
   A.unsub.forEach((u) => u()); A.unsub = [];
   A.teams = []; A.priv = {};
   A.unsub.push(onSnapshot(query(collection(db, C.teams), where("session", "==", s)), (snap) => {
@@ -131,7 +135,7 @@ $("nAdd").onclick = async () => {
   try {
     const label = await addTeam($("nSchool").value, $("nName").value, $("nPw").value);
     await updateSchools();
-    toast(`${label}을 추가했어요.`);
+    toast(`${SESSIONS[A.session]}에 ${label}을 추가했어요.`);
     $("nName").value = ""; $("nPw").value = "";
   } catch (e) { $("nErr").textContent = e.message || "추가하지 못했어요."; }
 };
@@ -152,7 +156,7 @@ $("bAdd").onclick = async () => {
   await updateSchools();
   $("bAdd").disabled = false;
   $("bErr").textContent = errs.join("\n");
-  if (n) { toast(`${n}팀을 추가했어요.`); if (!errs.length) $("bulk").value = ""; }
+  if (n) { toast(`${SESSIONS[A.session]}에 ${n}팀을 추가했어요.`); if (!errs.length) $("bulk").value = ""; }
 };
 
 function renderTeams() {

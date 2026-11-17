@@ -47,6 +47,11 @@
         <div class="grid2">
           <div class="card">
             <h3 style="margin-top:0">팀 한 개 추가</h3>
+            <label class="fld" style="margin-top:0">등록할 시간대</label>
+            <div class="seg sessPick" style="margin-bottom:6px">
+              <button type="button" data-s="am">☀️ 오전팀</button>
+              <button type="button" data-s="pm">🌇 오후팀</button>
+            </div>
             <label class="fld">학교 이름</label><input id="nSchool" class="inp" placeholder="예) 신대초등학교" list="schoolList">
             <datalist id="schoolList"></datalist>
             <label class="fld">학생 이름</label><input id="nName" class="inp" placeholder="예) 김순천">
@@ -57,6 +62,11 @@
           </div>
           <div class="card">
             <h3 style="margin-top:0">여러 팀 한 번에 추가</h3>
+            <label class="fld" style="margin-top:0">등록할 시간대</label>
+            <div class="seg sessPick" style="margin-bottom:6px">
+              <button type="button" data-s="am">☀️ 오전팀</button>
+              <button type="button" data-s="pm">🌇 오후팀</button>
+            </div>
             <p class="muted" style="margin-top:0">한 줄에 한 팀씩 「학교, 이름」 또는 「학교, 이름, 비밀번호」로 적어요. 엑셀·시트에서 복사해 붙여 넣어도 돼요. 비밀번호를 비우면 랜덤으로 만들어요.</p>
             <textarea id="bulk" class="inp" rows="7" placeholder="신대초등학교, 김순천&#10;연향초등학교, 이정원, 4821"></textarea>
             <div id="bErr" class="err"></div>
@@ -65,7 +75,7 @@
         </div>
         <div class="card">
           <div class="row wrap" style="justify-content:space-between;margin-bottom:10px">
-            <h3 style="margin:0">등록된 팀 <span id="teamCount" class="muted"></span></h3>
+            <h3 style="margin:0">등록된 팀 <span id="teamSess"></span> <span id="teamCount" class="muted"></span></h3>
             <div class="row wrap">
               <button id="btnRoster" class="btn small" type="button">🖼️ 명단 사진으로 저장</button>
             </div>
