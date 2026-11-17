@@ -8,6 +8,7 @@ import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, n
 import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon } from "./questions.js";
 import { PUZZLES } from "./puzzles.js";
 import { miniGrid } from "./widgets.js";
+import { renderPeek } from "./peek.js";
 import { drawRoster, savePng } from "./cert.js";
 
 const $ = (id) => document.getElementById(id);
@@ -79,12 +80,14 @@ function setSession(s) {
     renderTeams(); if (A.tab === "progress") renderProgress();
   }));
   $("rScale").textContent = $("rPento").textContent = "「결과 불러오기」를 눌러 주세요.";
+  if (A.tab === "peek") openAdminPeek();
 }
 function setTab(t) {
   A.tab = t;
   $("tabs").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
-  ["teams", "progress", "questions", "results"].forEach((n) => $("t-" + n).classList.toggle("hidden", n !== t));
+  ["teams", "progress", "peek", "questions", "results"].forEach((n) => $("t-" + n).classList.toggle("hidden", n !== t));
   if (t === "progress") renderProgress();
+  if (t === "peek") openAdminPeek(); else closeAdminPeek();
   if (t === "questions") { A.qDraft = JSON.parse(JSON.stringify(A.config.questions)); renderQuestions(true); }
 }
 
@@ -450,3 +453,56 @@ $("rReset").onclick = async () => {
   toast("초기화했어요.");
 };
 
+
+/* ── 엿보기 모아보기 ── */
+let pkUnsub = [], pkQid = null;
+function closeAdminPeek() { pkUnsub.forEach((u) => u()); pkUnsub = []; }
+function openAdminPeek() {
+  const qs = A.config.questions.filter((q) => !q.hidden);
+  if (!qs.find((q) => q.id === pkQid)) pkQid = qs[0]?.id;
+  $("pkPick").innerHTML = qs.map((q, i) => `<button type="button" class="btn small ${q.id === pkQid ? "" : "gray"}" data-q="${q.id}" title="${esc(qTitle(q))}">${i + 1}. ${qIcon(q)} ${esc(qTitle(q))}</button>`).join("");
+  $("pkPick").querySelectorAll("button").forEach((b) => b.onclick = () => { pkQid = b.dataset.q; openAdminPeek(); });
+  closeAdminPeek();
+  const q = qs.find((x) => x.id === pkQid);
+  const box = $("pkBox");
+  if (!q) { box.innerHTML = `<div class="empty">보이는 미션이 없어요.</div>`; return; }
+  box.innerHTML = `<div class="sheet-head" style="position:static"><h3>👀 ${qs.indexOf(q) + 1}. ${esc(qTitle(q))} <span class="muted">· ${SESSIONS[A.session]}</span></h3></div><div class="pk"><div class="loading"><div class="spin"></div></div></div>`;
+  const body = box.querySelector(".pk");
+  let list = [], priv = [];
+  const named = (a) => {
+    if (!$("pkNames").checked) return a;
+    const p = A.priv[a.teamId];
+    return p ? { ...a, label: `${a.label} ${p.name}` } : a;
+  };
+  const draw = () => {
+    if (q.kind === "scale") { drawScalePeek(body, priv.filter((r) => r.kind === "scale").map(named)); return; }
+    const times = priv.filter((r) => r.kind === "pentoTime").map(named);
+    renderPeek(body, q, list.map(named), { myTeamId: null, admin: true, config: { ...A.config, pentoTimePublic: true }, times });
+  };
+  $("pkNames").onchange = draw;
+  pkUnsub.push(onSnapshot(query(collection(db, C.answers), where("session", "==", A.session), where("qid", "==", q.id)),
+    (snap) => { list = snap.docs.map((d) => d.data()); draw(); },
+    (e) => { console.warn(e); body.innerHTML = `<div class="empty">불러오지 못했어요.</div>`; }));
+  if (q.kind === "scale" || q.kind === "pento") {
+    pkUnsub.push(onSnapshot(query(collection(db, C.priv), where("session", "==", A.session), where("qid", "==", q.id)),
+      (snap) => { priv = snap.docs.map((d) => d.data()); draw(); }, () => {}));
+  }
+}
+function drawScalePeek(el, rows) {
+  if (!rows.length) { el.innerHTML = `<div class="empty">아직 답한 팀이 없어요.</div>`; return; }
+  const avg = rows.reduce((a, r) => a + r.value, 0) / rows.length;
+  const faces = ["😞", "🙁", "😐", "🙂", "😍"];
+  el.innerHTML = `<div class="stat-row"><div class="stat"><b>${avg.toFixed(2)}점</b><span>평균 (5점 만점)</span></div><div class="stat"><b>${rows.length}팀</b><span>응답</span></div></div>
+    <div class="chart">${[5, 4, 3, 2, 1].map((v) => {
+      const items = rows.filter((r) => r.value === v);
+      return `<div class="row" style="margin:8px 0;align-items:flex-start"><b style="width:70px">${faces[v - 1]} ${v}점</b>
+        <div class="grow"><div style="background:#f0ece1;border-radius:99px;height:20px"><i style="display:block;height:100%;width:${items.length / rows.length * 100}%;background:#f08a24;border-radius:99px"></i></div>
+        <div class="tchips" style="margin-top:4px">${items.map((r) => `<span class="tchip">${esc(r.label)}</span>`).join("")}</div></div>
+        <b style="width:40px;text-align:right">${items.length}</b></div>`;
+    }).join("")}</div><div class="muted">🔒 만족도는 가족 엿보기에는 나오지 않고 관리자에게만 보여요.</div>`;
+}
+$("pkFull").onclick = () => {
+  const el = $("pkBox");
+  if (document.fullscreenElement) document.exitFullscreen();
+  else el.requestFullscreen?.().catch(() => toast("이 브라우저에서는 크게 보기를 할 수 없어요."));
+};

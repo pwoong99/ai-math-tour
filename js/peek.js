@@ -108,10 +108,10 @@ P.euler = (el, list, { myTeamId: me }) => {
       <div class="who">${esc(who(a, me))} · ${a.data.possible === "가능" ? "⭕ 가능" : "❌ 불가능"} · 홀수점 ${a.data.odd}개</div>${esc(a.data.reason)}</div>`).join("")}</div>`;
 };
 
-P.cipher = (el, list, { myTeamId: me, config }) => {
+P.cipher = (el, list, { myTeamId: me, config, admin }) => {
   const cp = config.cipher || {};
   const unknown = String(cp.key ?? "").trim() === "?" || String(cp.key ?? "").trim() === "";
-  const mine = list.find((a) => a.teamId === me);
+  const mine = admin || list.find((a) => a.teamId === me); // 관리자는 정답을 바로 봐요
   const norm = (s) => String(s || "").toUpperCase().replace(/\s+/g, " ").trim();
   const ans = norm(cp.answer);
   const g = new Map();

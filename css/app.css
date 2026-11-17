@@ -356,3 +356,8 @@ table.t td.c, table.t th.c { text-align: center; }
 .pz-pick button.on { border-color: var(--orange); background: var(--orange-l); }
 .switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; cursor: pointer; }
 .switch input { width: 22px; height: 22px; }
+
+/* 관리자 엿보기 크게 보기 (전체 화면) */
+#pkBox:fullscreen { max-width: none !important; overflow: auto; padding: 24px 40px; font-size: 20px; }
+#pkBox:fullscreen .chart, #pkBox:fullscreen .cloud { max-width: 1100px; margin-left: auto; margin-right: auto; }
+#pkBox:fullscreen .cloud { height: 60vh; }
