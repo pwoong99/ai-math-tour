@@ -10,6 +10,8 @@ const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"
 const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 const fmt = (n, d = 1) => Number.isFinite(n) ? (Math.round(n * 10 ** d) / 10 ** d).toLocaleString() : "-";
 const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+// 관리자가 학교·이름을 함께 볼 때는 이름 칸을 넓혀요
+let WIDE = false;
 const lblSort = (a, b) => a.label.length - b.label.length || a.label.localeCompare(b.label);
 
 function who(a, me) { return a.teamId === me ? "우리 가족" : a.label; }
@@ -85,7 +87,7 @@ function hbars(rows, { unit = "", max, color = "#17795a", icon = "", nameW = 74 
   const mx = max ?? Math.max(...rows.map((r) => r.v), 1);
   return rows.map((r) => `
     <div class="row" style="margin:6px 0;gap:8px">
-      <div style="width:${nameW}px;font-weight:800;font-size:14px;line-height:1.25" class="${r.mine ? "me" : ""}">${esc(r.name)}</div>
+      <div style="width:${WIDE ? Math.max(nameW, 190) : nameW}px;flex:none;font-weight:800;font-size:14px;line-height:1.25" class="${r.mine ? "me" : ""}">${esc(r.name)}</div>
       <div class="grow" style="background:#f0ece1;border-radius:99px;height:22px;position:relative;overflow:hidden">
         <i style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(4, r.v / mx * 100)}%;background:${r.mine ? "#f08a24" : color};border-radius:99px"></i>
         ${icon ? `<span style="position:absolute;left:calc(${Math.max(4, r.v / mx * 100)}% - 22px);top:0;font-size:16px">${icon}</span>` : ""}
@@ -161,7 +163,7 @@ P.stride = (el, list, { myTeamId: me }) => {
     const all = rows.flatMap((a) => [a.data.walk, a.data.gps]);
     const mn = Math.min(...all), mx = Math.max(...all), pad = (mx - mn) * 0.1 || 5;
     const lo = Math.max(0, mn - pad), hi = mx + pad;
-    const W = 360, L = 62, Rr = 62, rowH = 30, H = rows.length * rowH + 34;
+    const W = WIDE ? 560 : 360, L = WIDE ? 230 : 62, Rr = 62, rowH = 30, H = rows.length * rowH + 34;
     const X = (v) => L + (v - lo) / (hi - lo) * (W - L - Rr);
     let g = "";
     rows.forEach((a, k) => {
@@ -300,6 +302,7 @@ P.photo = (el, list, { myTeamId: me }) => {
 };
 
 export function renderPeek(el, q, list, ctx) {
+  WIDE = !!ctx.wideNames;
   const fn = P[q.kind];
   if (q.kind !== "scale" && !list.length) { el.innerHTML = `<div class="empty">아직 답을 낸 가족이 없어요.<br>조금 뒤에 다시 엿보러 와요! 👀</div>`; return; }
   if (!fn) { el.innerHTML = `<div class="empty">엿보기를 준비하지 못했어요.</div>`; return; }

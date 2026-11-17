@@ -300,7 +300,7 @@ label.fld small { font-weight: 500; color: var(--sub); }
 .mini-grid { display: inline-grid; gap: 1px; }
 .mini-grid i { width: 100%; aspect-ratio: 1; border-radius: 2px; }
 .sol-gallery { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-.sol-gallery .s { background: #fff; border-radius: 14px; padding: 10px; box-shadow: var(--shadow); text-align: center; font-weight: 800; font-size: 14px; }
+.sol-gallery .s { background: #fff; border-radius: 14px; padding: 10px; box-shadow: var(--shadow); text-align: center; font-weight: 800; font-size: 14px; word-break: keep-all; }
 .sol-gallery .s.mine { outline: 3px solid var(--orange); }
 
 /* 만족도 */

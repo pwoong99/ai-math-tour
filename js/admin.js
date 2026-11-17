@@ -472,12 +472,12 @@ function openAdminPeek() {
   const named = (a) => {
     if (!$("pkNames").checked) return a;
     const p = A.priv[a.teamId];
-    return p ? { ...a, label: `${a.label} ${p.name}` } : a;
+    return p ? { ...a, label: `${a.label} ${p.school} ${p.name}` } : a;
   };
   const draw = () => {
     if (q.kind === "scale") { drawScalePeek(body, priv.filter((r) => r.kind === "scale").map(named)); return; }
     const times = priv.filter((r) => r.kind === "pentoTime").map(named);
-    renderPeek(body, q, list.map(named), { myTeamId: null, admin: true, config: { ...A.config, pentoTimePublic: true }, times });
+    renderPeek(body, q, list.map(named), { myTeamId: null, admin: true, wideNames: $("pkNames").checked, config: { ...A.config, pentoTimePublic: true }, times });
   };
   $("pkNames").onchange = draw;
   pkUnsub.push(onSnapshot(query(collection(db, C.answers), where("session", "==", A.session), where("qid", "==", q.id)),
