@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>AI수학투어 관리자</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231d2321'/%3E%3Cpath d='M9 22l5-12 4 8 2-4 3 8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css?v=2.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛠️%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css?v=2.01">
 </head>
 <body class="admin">
   <header class="topbar">
-    <div class="brand">AI수학투어 <small>관리자</small></div>
-    <a class="iconbtn" href="./">가족 화면</a>
+    <div class="brand">🛠️ AI수학투어 관리자<small>2026. 가족과 함께하는 AI수학투어</small></div>
+    <a class="iconbtn" href="./" style="text-decoration:none">가족 화면</a>
     <button id="btnOut" class="iconbtn hidden" type="button">로그아웃</button>
   </header>
 
@@ -33,16 +33,16 @@
 
     <section id="a-main" class="hidden">
       <div class="atabs" id="tabs">
-        <button data-t="teams" class="on" type="button">팀 관리</button>
-        <button data-t="progress" type="button">진행 현황</button>
-        <button data-t="peek" type="button">모두의 답</button>
-        <button data-t="questions" type="button">문제 설정</button>
-        <button data-t="results" type="button">결과·자료</button>
+        <button data-t="teams" class="on" type="button">👨‍👩‍👧 팀 관리</button>
+        <button data-t="progress" type="button">📊 진행 현황</button>
+        <button data-t="peek" type="button">👣 팀별 발자취 모아보기</button>
+        <button data-t="questions" type="button">🧩 문제 설정</button>
+        <button data-t="results" type="button">📈 결과·자료</button>
       </div>
 
       <!-- 팀 관리 -->
       <div id="t-teams">
-        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">오전팀</button><button type="button" data-s="pm">오후팀</button></div>
+        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">☀️ 오전팀</button><button type="button" data-s="pm">🌇 오후팀</button></div>
           <span class="note">고른 시간대에 팀을 등록하고 관리해요.</span></div>
         <div class="grid2">
           <div class="card">
@@ -51,7 +51,7 @@
             <datalist id="schoolList"></datalist>
             <label class="fld">학생 이름</label><input id="nName" class="inp" placeholder="예) 김순천">
             <label class="fld">비밀번호 <small>숫자 4자리, 0으로 시작 불가</small></label>
-            <div class="row"><input id="nPw" class="inp pin grow" inputmode="numeric" maxlength="4"><button id="nRand" class="btn gray" type="button">랜덤</button></div>
+            <div class="row"><input id="nPw" class="inp pin grow" inputmode="numeric" maxlength="4"><button id="nRand" class="btn gray" type="button">🎲 랜덤</button></div>
             <div id="nErr" class="err"></div>
             <button id="nAdd" class="btn block" type="button" style="margin-top:14px">추가하기</button>
           </div>
@@ -66,7 +66,7 @@
         <div class="card">
           <div class="row wrap" style="justify-content:space-between;margin-bottom:12px">
             <h3 style="margin:0">등록된 팀 <span id="teamSess" class="muted"></span> <span id="teamCount" class="muted"></span></h3>
-            <button id="btnRoster" class="btn small ghost" type="button">명단 사진으로 저장</button>
+            <button id="btnRoster" class="btn small" type="button">🖼️ 명단 사진으로 저장</button>
           </div>
           <div class="tbl-wrap"><table class="t" id="teamTbl"></table></div>
         </div>
@@ -74,22 +74,22 @@
 
       <!-- 진행 현황 -->
       <div id="t-progress" class="hidden">
-        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">오전팀</button><button type="button" data-s="pm">오후팀</button></div>
+        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">☀️ 오전팀</button><button type="button" data-s="pm">🌇 오후팀</button></div>
           <span class="note">실시간으로 바뀌어요.</span></div>
         <div id="pgStats" class="stat-row"></div>
         <div class="card"><div class="tbl-wrap"><table class="t pg" id="pgTbl"></table></div>
-          <p class="muted" style="margin-bottom:0"><b style="color:var(--green)">✓</b> 해결 · <b style="color:var(--orange)">●</b> 지금 보고 있는 미션</p></div>
+          <p class="muted">✔ 해결 · 👉 지금 보고 있는 미션 · 실시간으로 바뀌어요.</p></div>
       </div>
 
-      <!-- 모두의 답 -->
+      <!-- 팀별 발자취 모아보기 -->
       <div id="t-peek" class="hidden">
-        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">오전팀</button><button type="button" data-s="pm">오후팀</button></div>
-          <span class="note">가족 화면의 「모두의 답」과 같은 화면이에요. 새 답이 오면 바로 바뀌어요.</span></div>
+        <div class="sessbar"><div class="seg sessPick"><button type="button" data-s="am">☀️ 오전팀</button><button type="button" data-s="pm">🌇 오후팀</button></div>
+          <span class="note">가족들이 보는 「팀별 발자취」 화면과 같아요. 실시간으로 바뀌어요.</span></div>
         <div class="card">
           <div id="pkPick" class="row wrap" style="gap:6px"></div>
           <div class="row wrap" style="gap:14px;margin-top:12px">
             <label class="switch"><input id="pkNames" type="checkbox"> 학교·이름 함께 보기</label>
-            <button id="pkFull" class="btn small ghost" type="button">크게 보기</button>
+            <button id="pkFull" class="btn small gray" type="button">⛶ 크게 보기</button>
             <span class="muted">펜토미노 걸린 시간은 비공개여도 관리자에게는 보여요.</span>
           </div>
         </div>
@@ -102,7 +102,7 @@
         <div class="card">
           <div class="row wrap" style="justify-content:space-between">
             <h3 style="margin:0">미션 순서와 제목</h3>
-            <button id="qSave" class="btn orange small" type="button">문제 목록 저장</button>
+            <button id="qSave" class="btn orange small" type="button">💾 문제 목록 저장</button>
           </div>
           <p class="muted">위·아래 버튼으로 순서를 바꾸고, 숨긴 미션은 가족 화면에 나오지 않아요. 진행 중에 순서를 바꾸면 각 팀의 다음 미션도 새 순서를 따라요.</p>
           <div id="qList"></div>
@@ -123,11 +123,11 @@
               <div id="cOpt" class="hidden"><label class="fld">고를 것 <small>한 줄에 하나씩</small></label><textarea id="cOpts" class="inp" rows="5"></textarea></div>
             </div>
           </div>
-          <button id="cAdd" class="btn ghost block" type="button" style="margin-top:16px">목록 맨 아래에 추가</button>
+          <button id="cAdd" class="btn block" type="button" style="margin-top:16px">➕ 목록 맨 아래에 추가</button>
         </div>
         <div class="grid2">
           <div class="card">
-            <h3 style="margin-top:0">스페이스 암호 문제</h3>
+            <h3 style="margin-top:0">🛸 스페이스 암호 문제</h3>
             <label class="fld">암호문</label><input id="sText" class="inp" style="text-transform:uppercase">
             <label class="fld">가족에게 보여 줄 열쇠 k <small>숫자, 또는 찾게 하려면 ?</small></label><input id="sKey" class="inp">
             <label class="fld">힌트 <small>선택</small></label><textarea id="sHint" class="inp" rows="2"></textarea>
@@ -136,33 +136,33 @@
             <div id="sCheck" class="muted" style="margin-top:8px"></div>
           </div>
           <div class="card">
-            <h3 style="margin-top:0">방형구와 기타</h3>
+            <h3 style="margin-top:0">🌼 방형구 · ⚙️ 기타</h3>
             <label class="fld">주최측이 알려 주는 꽃밭 영역 넓이 (㎡)</label>
             <input id="sArea" class="inp" inputmode="decimal">
             <label class="fld">AI 꽃 세기 Apps Script 웹앱 주소</label>
             <input id="sGas" class="inp" placeholder="https://script.google.com/macros/s/…/exec">
             <div class="row" style="margin-top:8px"><button id="sGasTest" class="btn gray small" type="button">연결 시험</button><span id="sGasMsg" class="muted"></span></div>
-            <label class="switch" style="margin-top:18px;display:flex"><input id="sTime" type="checkbox"> 펜토미노 걸린 시간을 가족 화면 「모두의 답」에 공개</label>
+            <label class="switch" style="margin-top:18px;display:flex"><input id="sTime" type="checkbox"> 펜토미노 걸린 시간을 가족 「팀별 발자취」에 공개</label>
           </div>
         </div>
         <div class="card">
-          <h3 style="margin-top:0">펜토미노 퍼즐 고르기 <small class="muted">모든 팀이 같은 퍼즐을 풀어요</small></h3>
+          <h3 style="margin-top:0">🧩 펜토미노 퍼즐 고르기 <small class="muted">모든 팀이 같은 퍼즐을 풀어요</small></h3>
           <div id="pzPick" class="pz-pick"></div>
         </div>
-        <button id="sSave" class="btn orange block" type="button">설정 저장 (암호 · 넓이 · 주소 · 퍼즐 · 시간 공개)</button>
+        <button id="sSave" class="btn orange block" type="button">💾 설정 저장 (암호 · 넓이 · 주소 · 퍼즐 · 시간 공개)</button>
       </div>
 
       <!-- 결과 -->
       <div id="t-results" class="hidden">
         <div class="notice">오전팀과 오후팀 결과를 한 번에 보여 줘요.</div>
         <div class="row wrap" style="margin-bottom:14px">
-          <button id="rLoad" class="btn" type="button">결과 불러오기</button>
-          <button id="rCsv" class="btn ghost" type="button">전체 답 CSV 내려받기 (오전·오후)</button>
+          <button id="rLoad" class="btn" type="button">🔄 결과 불러오기</button>
+          <button id="rCsv" class="btn ghost" type="button">📄 전체 답 CSV 내려받기 (오전·오후)</button>
         </div>
-        <div class="card"><h3 style="margin-top:0">오늘 활동 만족도 <small class="muted">관리자만</small></h3><div id="rScale" class="muted">「결과 불러오기」를 눌러 주세요.</div></div>
-        <div class="card"><h3 style="margin-top:0">펜토미노 걸린 시간</h3><div id="rPento" class="muted">「결과 불러오기」를 눌러 주세요.</div></div>
+        <div class="card"><h3 style="margin-top:0">⭐ 오늘 활동 만족도 <small class="muted">관리자만</small></h3><div id="rScale" class="muted">「결과 불러오기」를 눌러 주세요.</div></div>
+        <div class="card"><h3 style="margin-top:0">⏱ 펜토미노 걸린 시간</h3><div id="rPento" class="muted">「결과 불러오기」를 눌러 주세요.</div></div>
         <div class="card" style="border-color:#ecc9c5">
-          <h3 style="margin-top:0;color:var(--red)">답 모두 지우기</h3>
+          <h3 style="margin-top:0;color:var(--red)">⚠️ 답 모두 지우기</h3>
           <p class="muted">연습해 본 뒤 실제 행사 전에 쓰세요. 팀 명단은 남기고, 고른 시간대 팀들의 답·만족도·진행 상황만 지워요.</p>
           <div class="row wrap">
             <select id="rResetSess" class="inp" style="width:200px"><option value="am">오전팀만</option><option value="pm">오후팀만</option><option value="all">오전·오후 모두</option></select>
@@ -173,6 +173,6 @@
     </section>
     <div class="footer">만든 곳: 순천수학교육체험센터 · <span class="ver"></span></div>
   </main>
-  <script type="module" src="js/admin.js?v=2.0"></script>
+  <script type="module" src="js/admin.js?v=2.01"></script>
 </body>
 </html>

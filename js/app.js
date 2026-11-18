@@ -1,13 +1,13 @@
-// 가족 화면: 로그인 → 미션 풀기 → 모두의 답 → 완주 수료증
+// 가족 화면: 로그인 → 미션 풀기 → 팀별 발자취 → 완주 수료증
 import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.0";
-import { withDefaults, visibleQs, qTitle, qDesc } from "./questions.js?v=2.0";
-import { renderInput } from "./inputs.js?v=2.0";
-import { renderPeek } from "./peek.js?v=2.0";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.0";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.01";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.01";
+import { renderInput } from "./inputs.js?v=2.01";
+import { renderPeek } from "./peek.js?v=2.01";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.01";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -161,21 +161,21 @@ function renderProgress() {
   const q = l[S.idx];
   const last = S.idx >= l.length - 1;
   $("btnNext").disabled = !q || !solved(q);
-  $("btnNext").textContent = last ? "완주 화면" : "다음 미션";
+  $("btnNext").textContent = last ? "🏆 완주 화면" : "다음 미션 ▶";
 }
 
 function openMission(i) {
   const l = qs();
   if (!l.length) { showList(); return; }
   i = Math.max(0, Math.min(i, l.length - 1));
-  if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요"); i = firstOpen(); }
+  if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요 🔒"); i = firstOpen(); }
   S.idx = i;
   const q = l[i];
   S.curId = q.id;
   show("mission");
-  $("qNum").textContent = `미션 ${String(i + 1).padStart(2, "0")} / ${String(l.length).padStart(2, "0")}`;
-  $("qTitle").textContent = qTitle(q);
-  $("qSolved").innerHTML = solved(q) ? `<span class="solved-tag">해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>` : "";
+  $("qNum").textContent = `미션 ${i + 1}`;
+  $("qTitle").textContent = `${qIcon(q)} ${qTitle(q)}`;
+  $("qSolved").innerHTML = solved(q) ? `<span class="solved-tag">✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>` : "";
   const d = qDesc(q);
   $("qDesc").innerHTML = esc(d);
   $("qDesc").classList.toggle("hidden", !d);
@@ -218,13 +218,13 @@ async function submit() {
     S.mine[q.id] = r.data;
     S.team.solved = { ...(S.team.solved || {}), [q.id]: true };
     renderProgress();
-    $("qSolved").innerHTML = `<span class="solved-tag">해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>`;
+    $("qSolved").innerHTML = `<span class="solved-tag">✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>`;
     const last = S.idx >= l.length - 1;
-    $("qDone").innerHTML = `<div style="background:var(--green-l);border-radius:12px;padding:14px;text-align:center">
-        <b style="font-size:16px;color:var(--green-d)">제출했어요</b><div class="muted">${q.kind === "scale" ? "소중한 의견 고마워요." : "다른 가족들은 어떻게 답했을까요?"}</div>
+    $("qDone").innerHTML = `<div class="card" style="background:#e3f3ec;margin:0;text-align:center">
+        <b style="font-size:18px">✅ 제출했어요!</b><div class="muted">다른 가족은 어떻게 답했을까요?</div>
         <div class="row" style="margin-top:10px">
-          ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>모두의 답</button>`}
-          <button type="button" class="btn grow" data-next>${last ? "완주 화면으로" : "다음 미션"}</button></div></div>`;
+          ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>👣 발자취 보기</button>`}
+          <button type="button" class="btn grow" data-next>${last ? "🏆 완주!" : "다음 미션 ▶"}</button></div></div>`;
     $("qDone").classList.remove("hidden");
     $("qDone").querySelector("[data-peek]")?.addEventListener("click", () => openPeek(q));
     $("qDone").querySelector("[data-next]").onclick = goNext;
@@ -258,26 +258,26 @@ function renderList() {
   const l = qs(), open = firstOpen();
   $("mList").innerHTML = l.map((q, i) => {
     const ok = solved(q), locked = i > open, cur = i === open;
-    return `<button type="button" class="mitem ${locked ? "locked" : ""} ${cur ? "current" : ""} ${ok ? "done" : ""}" data-i="${i}">
-      <span class="ic">${i + 1}</span>
-      <span class="t">${esc(qTitle(q))}${cur ? "<small>지금 풀 차례</small>" : ""}</span>
-      <span class="st">${ok ? "완료" : locked ? "잠김" : "풀기"}</span></button>`;
-  }).join("") + (allDone() ? `<button type="button" class="mitem current" data-done><span class="ic" style="background:var(--ink);color:#fff">✓</span><span class="t">완주 · 수료증 받기</span><span class="st">열기</span></button>` : "");
+    return `<button type="button" class="mitem ${locked ? "locked" : ""} ${cur ? "current" : ""}" data-i="${i}">
+      <span class="ic">${qIcon(q)}</span>
+      <span class="t">${esc(qTitle(q))}<small>미션 ${i + 1}${cur ? " · 지금 풀 차례" : ""}</small></span>
+      <span class="st">${ok ? "✅" : locked ? "🔒" : "▶"}</span></button>`;
+  }).join("") + (allDone() ? `<button type="button" class="mitem current" data-done><span class="ic">🏆</span><span class="t">완주 · 수료증 받기</span><span class="st">🎓</span></button>` : "");
   $("mList").querySelectorAll("[data-i]").forEach((b) => b.onclick = () => {
     const i = Number(b.dataset.i);
-    if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요"); return; }
+    if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요 🔒"); return; }
     openMission(i);
   });
   $("mList").querySelector("[data-done]")?.addEventListener("click", showDone);
 }
 
-/* ── 모두의 답 ── */
+/* ── 팀별 발자취 ── */
 function openPeek(q) {
   closePeek();
   const bg = document.createElement("div");
   bg.className = "sheet-bg";
-  bg.innerHTML = `<div class="sheet"><div class="sheet-head"><h3><small>모두의 답</small>${esc(qTitle(q))}</h3><button class="x" type="button" aria-label="닫기">✕</button></div>
-    <div class="peek-sub">${SESSIONS[S.me.session]} 가족들의 답이에요. 새 답이 오면 바로 바뀌어요.</div><div class="pk"><div class="loading"><div class="spin"></div></div></div></div>`;
+  bg.innerHTML = `<div class="sheet"><div class="sheet-head"><h3>👣 ${esc(qTitle(q))}</h3><button class="x" type="button">✕</button></div>
+    <div class="peek-sub">${SESSIONS[S.me.session]} 팀별 발자취예요. 실시간으로 바뀌어요!</div><div class="pk"><div class="loading"><div class="spin"></div></div></div></div>`;
   document.body.appendChild(bg);
   document.body.style.overflow = "hidden";
   bg.querySelector(".x").onclick = closePeek;
@@ -288,7 +288,7 @@ function openPeek(q) {
   S.peekUnsub.push(onSnapshot(
     query(collection(db, C.answers), where("session", "==", S.me.session), where("qid", "==", q.id)),
     (snap) => { list = snap.docs.map((d) => d.data()); draw(); },
-    (e) => { console.warn(e); box.innerHTML = `<div class="empty">답을 불러오지 못했어요.</div>`; }
+    (e) => { console.warn(e); box.innerHTML = `<div class="empty">팀별 발자취를 불러오지 못했어요.</div>`; }
   ));
   if (q.kind === "pento" && S.config.pentoTimePublic) {
     S.peekUnsub.push(onSnapshot(
@@ -331,7 +331,7 @@ $("btnCertSave").onclick = async () => {
   a.href = url; a.download = certName();
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
-  toast("수료증을 저장했어요. 사진첩이나 다운로드 폴더를 확인해 주세요.");
+  toast("수료증을 저장했어요! 사진첩이나 다운로드 폴더를 확인해 주세요.");
 };
 $("btnCertShare").onclick = async () => {
   if (!certCanvas) return;

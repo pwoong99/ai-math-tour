@@ -28,13 +28,13 @@ export const C = {
   sessions: "mathTour_sessions",      // 접속한 기기 → 팀 연결
   teams: "mathTour_teams",            // 공개 정보: 팀 이름(A팀…)·진행 상황
   teamsPrivate: "mathTour_teamsPrivate", // 관리자만: 학교·학생 이름·비밀번호
-  answers: "mathTour_answers",        // 팀별 답 (엿보기에 쓰임)
+  answers: "mathTour_answers",        // 팀별 답 (팀별 발자취에 쓰임)
   priv: "mathTour_private"            // 관리자만: 만족도·펜토미노 걸린 시간
 };
 
 export const SESSIONS = { am: "오전팀", pm: "오후팀" };
 export const CENTER = "순천수학교육체험센터";
-export const VERSION = "v2.0";
+export const VERSION = "v2.01";
 // 화면 아래 「만든 곳」 옆 버전 표시
 document.querySelectorAll(".ver").forEach((el) => el.textContent = VERSION);
 export const EVENT_TITLE = "2026. 가족과 함께하는 AI수학투어";

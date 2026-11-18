@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.0";
-import { BUILTIN, funOptions, qTitle } from "./questions.js?v=2.0";
-import { PUZZLES } from "./puzzles.js?v=2.0";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.0";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.01";
+import { BUILTIN, funOptions, qTitle, qIcon } from "./questions.js?v=2.01";
+import { PUZZLES } from "./puzzles.js?v=2.01";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.01";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -30,7 +30,7 @@ function choiceGroup(el, sel, onPick) {
 function photoPicker(holder, prev, onPhoto) {
   holder.innerHTML = `
     <div class="ph-prev">${prev ? `<img src="${prev}" style="border-radius:14px;margin-bottom:8px">` : ""}</div>
-    <label class="btn ghost block" style="margin-top:4px">${prev ? "사진 다시 올리기" : "사진 찍기 / 고르기"}
+    <label class="btn ghost block" style="margin-top:4px">📷 ${prev ? "사진 다시 올리기" : "사진 찍기 / 고르기"}
       <input type="file" accept="image/*" class="hidden"></label>`;
   holder.querySelector("input").onchange = async (e) => {
     const f = e.target.files[0];
@@ -45,7 +45,7 @@ function photoPicker(holder, prev, onPhoto) {
 
 export const EULER_SVG = `
 <svg viewBox="0 0 300 250" style="width:min(100%,300px);display:block;margin:6px auto">
-  <g fill="none" stroke="#1d2321" stroke-width="3">
+  <g fill="none" stroke="#1d2b2a" stroke-width="3">
     <path d="M60 35 C 18 55, 18 110, 60 125"/><path d="M60 35 C 102 55, 102 110, 60 125"/>
     <path d="M60 125 C 18 140, 18 195, 60 215"/><path d="M60 125 C 102 140, 102 195, 60 215"/>
     <line x1="60" y1="35" x2="255" y2="125"/><line x1="60" y1="125" x2="255" y2="125"/><line x1="60" y1="215" x2="255" y2="125"/>
@@ -60,7 +60,7 @@ R.euler = (el, q, { prev }) => {
   let pick = prev?.possible || "";
   el.innerHTML = `${EULER_SVG}
     <label class="fld">한붓그리기가 가능할까요?</label>
-    <div class="choices"><button type="button" class="choice" data-v="가능">가능</button><button type="button" class="choice" data-v="불가능">불가능</button></div>
+    <div class="choices"><button type="button" class="choice" data-v="가능">⭕ 가능</button><button type="button" class="choice" data-v="불가능">❌ 불가능</button></div>
     ${numField("e_odd", "홀수점은 몇 개인가요?", "개", prev?.odd, { int: true, ph: "예) 2" })}
     <label class="fld" for="e_why">이유를 설명해 보세요</label>
     <textarea id="e_why" class="inp" rows="3" maxlength="200" placeholder="예) 홀수점이 ○개라서 …">${esc(prev?.reason || "")}</textarea>`;
@@ -82,7 +82,7 @@ R.cipher = (el, q, { prev, config }) => {
   const cp = config.cipher || {};
   const unknown = String(cp.key ?? "").trim() === "?" || String(cp.key ?? "").trim() === "";
   el.innerHTML = `
-    <div class="cipher-box"><div class="lbl">우주에서 온 비밀 편지</div>
+    <div class="cipher-box"><div class="muted" style="color:#c9d3ff">우주에서 온 비밀 편지</div>
       <div class="ct">${esc(cp.text || "")}</div>
       <div class="k">열쇠 k = ${unknown ? "? (찾아보세요!)" : esc(cp.key)}</div>
       ${cp.hint ? `<div class="hint">${esc(cp.hint)}</div>` : ""}</div>
@@ -169,7 +169,7 @@ R.quadrat = (el, q, { prev, config }) => {
         ${numField("q_eye", "우리 가족이 직접 센 꽃 수", "송이", prev?.eye, { int: true, ph: "예) 12" })}</div>
       <div class="step"><h5>1㎡에는 몇 송이?</h5>
         <div class="muted">20cm × 20cm 방형구 25개 = 1m × 1m = 1㎡ 예요. 어떤 수로 계산할까요?</div>
-        <div class="choices" style="margin:8px 0"><button type="button" class="choice" data-v="eye">내가 센 수</button><button type="button" class="choice" data-v="ai">AI가 센 수</button></div>
+        <div class="choices" style="margin:8px 0"><button type="button" class="choice" data-v="eye">👀 내가 센 수</button><button type="button" class="choice" data-v="ai">🤖 AI가 센 수</button></div>
         <div class="calc q-f1">(기준 수) × 25 = □</div>
         ${numField("q_m2", "1㎡당 꽃 수", "송이", prev?.perM2, { int: true })}</div>
       <div class="step"><h5>꽃밭 전체는 몇 송이?</h5>
@@ -193,14 +193,14 @@ R.quadrat = (el, q, { prev, config }) => {
     if (state === "busy") { aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요…<br><span class="muted">10~30초쯤 걸릴 수 있어요. 기다려 주세요!</span></div>`; return; }
     if (st.photo && !st.aiManual && st.aiCount !== "") {
       aiBox.innerHTML = `${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}
-        <div class="muted" style="margin-top:6px"><b>Gemini AI가 셌어요</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>`;
+        <div class="muted" style="margin-top:6px"><b>🤖 Gemini AI가 셌어요</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>`;
       return;
     }
     const manual = st.aiManual || state === "fail";
     aiBox.innerHTML = manual
       ? `${state === "fail" ? `<div class="err">AI에게 물어보지 못했어요. 다른 AI 앱(Gemini·ChatGPT 등)으로 센 수를 직접 적어 주세요.</div>${st.aiErr ? `<div class="muted" style="font-size:12px">오류: ${esc(st.aiErr)}</div>` : ""}` : ""}
          ${numField("q_aiman", "다른 AI 앱이 센 꽃 수", "송이", st.aiCount, { int: true })}
-         ${config.gasUrl && st.photo ? `<button type="button" class="btn small gray" style="margin-top:8px" data-retry>다시 AI에게 물어보기</button>` : ""}`
+         ${config.gasUrl && st.photo ? `<button type="button" class="btn small gray" style="margin-top:8px" data-retry>🔄 다시 AI에게 물어보기</button>` : ""}`
       : `<div class="muted">사진을 올리고 「AI에게 세어 달라고 하기」를 누르면 여기에 결과가 나와요.</div>`;
     const inp = aiBox.querySelector("#q_aiman");
     if (inp) { st.aiManual = true; inp.oninput = () => { st.aiCount = inp.value; formula(); }; }
@@ -211,13 +211,13 @@ R.quadrat = (el, q, { prev, config }) => {
   let crop = null;
   const drawPhoto = () => {
     ph.innerHTML = `${st.photo ? `<img src="${st.photo}" style="border-radius:14px;margin-bottom:8px;width:70%;margin:0 auto 8px">` : `<div class="muted">20cm × 20cm 틀이 화면에 꽉 차게, 위에서 수직으로 찍어요.</div>`}
-      <label class="btn ghost block" style="margin-top:6px">${st.photo ? "사진 다시 올리기" : "방형구 사진 찍기 / 고르기"}<input type="file" accept="image/*" class="hidden"></label>`;
+      <label class="btn ghost block" style="margin-top:6px">📷 ${st.photo ? "사진 다시 올리기" : "방형구 사진 찍기 / 고르기"}<input type="file" accept="image/*" class="hidden"></label>`;
     ph.querySelector("input").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
       const url = await fileToJpeg(f, 1600, 0.85).catch(() => null);
       if (!url) return toast("사진을 열지 못했어요.");
       ph.innerHTML = `<div class="cr"></div>
-        <button type="button" class="btn orange block" style="margin-top:10px" data-go>이 영역을 AI에게 세어 달라고 하기</button>
+        <button type="button" class="btn orange block" style="margin-top:10px" data-go>🤖 이 영역을 AI에게 세어 달라고 하기</button>
         <button type="button" class="btn gray block small" style="margin-top:6px" data-cancel>취소</button>`;
       crop = cropper(ph.querySelector(".cr"), url);
       ph.querySelector("[data-cancel]").onclick = () => { crop = null; drawPhoto(); };
@@ -305,7 +305,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit }) => {
     el.innerHTML = `
       <div class="row" style="justify-content:space-between;margin-bottom:6px">
         <div><b>${esc(pz.level)} · ${esc(pz.name)}</b><div class="muted">${pz.pieces.length}조각 · ${pz.pieces.length * 5}칸</div></div>
-        <div class="timer"><span class="tt">0분 00초</span></div></div>
+        <div class="timer">⏱ <span class="tt">0분 00초</span></div></div>
       <div class="pb"></div>
       <button type="button" class="btn gray small" style="margin-top:8px" data-reset>처음부터 다시</button>`;
     const tt = el.querySelector(".tt");
@@ -321,7 +321,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit }) => {
         clearInterval(timerId);
         const sec = Math.round((Date.now() - Number(localStorage.getItem(startKey))) / 1000);
         result = { grid, seconds: sec };
-        toast(`완성! ${fmt(sec)} 걸렸어요`);
+        toast(`🎉 완성! ${fmt(sec)} 걸렸어요`);
         autoSubmit();
       }
     });
@@ -329,8 +329,8 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit }) => {
   };
 
   if (already) {
-    el.innerHTML = `<div style="text-align:center;background:var(--green-l);border-radius:12px;padding:16px">
-        <b>${esc(pz.level)} · ${esc(pz.name)} 완성!</b>
+    el.innerHTML = `<div class="card" style="text-align:center;background:#e3f3ec">
+        <div style="font-size:40px">🎉</div><b>${esc(pz.level)} · ${esc(pz.name)} 완성!</b>
         <div style="margin:10px auto;display:flex;justify-content:center">${miniGrid(prev.grid, 26)}</div>
         <button type="button" class="btn ghost small" data-again>다른 방법으로 다시 맞춰 보기</button>
         <div class="muted" style="margin-top:6px">다시 맞춰도 처음 걸린 시간 기록은 바뀌지 않아요.</div></div>`;
@@ -357,7 +357,7 @@ R.fun = (el, q, { prev, config }) => {
   const opts = funOptions(config);
   const picks = new Set(prev?.picks || []);
   el.innerHTML = `<div class="choices list">${opts.map((o) =>
-    `<button type="button" class="choice ${picks.has(o.id) ? "on" : ""}" data-v="${o.id}">${esc(qTitle(o))}</button>`).join("")}</div>
+    `<button type="button" class="choice ${picks.has(o.id) ? "on" : ""}" data-v="${o.id}"><span style="font-size:22px">${qIcon(o)}</span>${esc(qTitle(o))}</button>`).join("")}</div>
     <button type="button" class="btn gray small" style="margin-top:10px" data-all>모두 고르기</button>`;
   el.querySelectorAll(".choice").forEach((b) => b.onclick = () => {
     const v = b.dataset.v;
@@ -383,7 +383,7 @@ R.scale = (el, q, { teamId }) => {
   let v = Number(localStorage.getItem(key)) || 0;
   el.innerHTML = `<div class="stars">${FACES.map((f, i) =>
     `<button type="button" data-v="${i + 1}" class="${v === i + 1 ? "on" : ""}">${f[0]}<span>${i + 1}점<br>${f[1]}</span></button>`).join("")}</div>
-    <div class="muted" style="margin-top:10px">이 답은 다른 가족에게 보이지 않고 선생님만 볼 수 있어요.</div>`;
+    <div class="muted" style="margin-top:10px">🔒 이 답은 다른 가족에게 보이지 않고 선생님만 볼 수 있어요.</div>`;
   el.querySelectorAll(".stars button").forEach((b) => b.onclick = () => {
     v = Number(b.dataset.v);
     el.querySelectorAll(".stars button").forEach((x) => x.classList.toggle("on", x === b));
