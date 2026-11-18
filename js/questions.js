@@ -91,7 +91,8 @@ export const DEFAULT_CONFIG = {
   quadratArea: 20,      // 주최측이 알려 주는 꽃밭 영역 넓이(㎡)
   pentoPuzzles: [...Array(18).keys()], // 가족이 고를 수 있는 퍼즐 번호 (기본: 18개 모두)
   pentoNeed: 3,         // 통과에 필요한 퍼즐 수
-  pentoTimePublic: false,
+  pentoTimePublic: false, // 「팀별 발자취」에 가족별 걸린 시간 보여 주기
+  pentoTimerShow: true,   // 가족 화면 펜토미노 미션에 타이머 보여 주기
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
   gasUrl: "https://script.google.com/macros/s/AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58/exec"
 };

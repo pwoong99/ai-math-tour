@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.1";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.1";
-import { PUZZLES } from "./puzzles.js?v=2.1";
-import { miniGrid } from "./widgets.js?v=2.1";
-import { renderPeek } from "./peek.js?v=2.1";
-import { drawRoster, savePng } from "./cert.js?v=2.1";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.11";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.11";
+import { PUZZLES } from "./puzzles.js?v=2.11";
+import { miniGrid } from "./widgets.js?v=2.11";
+import { renderPeek } from "./peek.js?v=2.11";
+import { drawRoster, savePng } from "./cert.js?v=2.11";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -282,6 +282,7 @@ function renderQuestions(fillSettings) {
   $("sText").value = c.cipher.text || ""; $("sKey").value = c.cipher.key ?? "?"; $("sHint").value = c.cipher.hint || "";
   $("sAns").value = c.cipher.answer || ""; $("sAnsK").value = c.cipher.answerK ?? "";
   $("sArea").value = c.quadratArea; $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
+  $("sTimer").checked = c.pentoTimerShow !== false;
   const ps = pentoSettings(c);
   A.pzSet = new Set(ps.list); $("pzNeed").value = ps.need;
   renderPz(); cipherCheck();
@@ -355,7 +356,7 @@ $("sSave").onclick = async () => {
       text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
       answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
     },
-    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: need, pentoTimePublic: $("sTime").checked
+    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: need, pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
   });
   toast("설정을 저장했어요.");
 };

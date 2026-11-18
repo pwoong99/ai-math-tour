@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.1";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.1";
-import { PUZZLES } from "./puzzles.js?v=2.1";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.1";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.11";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.11";
+import { PUZZLES } from "./puzzles.js?v=2.11";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.11";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -307,7 +307,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <div><b style="font-size:18px">${count()} / ${need}개 완성</b>
         <div class="muted">${count() >= need ? "통과 조건을 채웠어요! 더 풀어 봐도 좋아요." : `퍼즐 ${need}개를 완성하면 다음 미션으로 넘어가요.`}</div></div>
-      <div class="timer">⏱ <span class="tt">${fmt(elapsed())}</span></div></div>
+      ${config.pentoTimerShow === false ? "" : `<div class="timer">⏱ <span class="tt">${fmt(elapsed())}</span></div>`}</div>
     <div style="height:10px;background:#e6e1d4;border-radius:99px;overflow:hidden;margin-bottom:12px">
       <i style="display:block;height:100%;width:${Math.min(100, count() / need * 100)}%;background:#17795a;border-radius:99px"></i></div>`;
   const tickOn = () => {
