@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.2";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.2";
-import { PUZZLES } from "./puzzles.js?v=2.2";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.2";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.3";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup } from "./questions.js?v=2.3";
+import { PUZZLES } from "./puzzles.js?v=2.3";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.3";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -292,44 +292,66 @@ R.fibo = (el, q, { prev }) => {
 
 /* 8. 펜토미노 */
 R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) => {
-  const { list, need } = pentoSettings(config);
+  const st = pentoSettings(config);
+  const { list, need, mode, groups } = st;
   const solved = { ...pentoSolved(prev) };            // { 퍼즐번호: { grid } }
-  const passedBefore = Object.keys(solved).length >= need && !!prev?.passed;
+  const prog = () => pentoProgress(solved, st);
+  const passedBefore = prog().passed && !!prev?.passed;
   const startKey = `mt_pento_start_${teamId}_${round}`;
   if (!localStorage.getItem(startKey)) localStorage.setItem(startKey, String(Date.now()));
   let timerId = null, passedNow = null;
   const fmt = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
   const elapsed = () => Math.round((Date.now() - Number(localStorage.getItem(startKey))) / 1000);
-  const count = () => Object.keys(solved).filter((k) => list.includes(Number(k))).length;
-  const dataOut = () => ({ solved, count: count(), need, passed: count() >= need });
+  const count = () => prog().count;
+  const dataOut = () => { const p = prog(); return { solved, count: p.count, need, passed: p.passed }; };
+  // group 방식: 이 퍼즐과 같은 조각 수 묶음에서 이미 다른 퍼즐을 풀었으면 잠가요
+  const lockedBy = (i) => mode === "group" ? Object.keys(solved).map(Number).find((j) => j !== i && list.includes(j) && pzGroup(j) === pzGroup(i)) : undefined;
 
-  const head = () => `
-    <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <div><b style="font-size:18px">${count()} / ${need}개 완성</b>
-        <div class="muted">${count() >= need ? "통과 조건을 채웠어요! 더 풀어 봐도 좋아요." : `퍼즐 ${need}개를 완성하면 다음 미션으로 넘어가요.`}</div></div>
+  const head = () => {
+    const p = prog();
+    const rule = mode === "group"
+      ? `${groups.map((g) => `${g}조각`).join(" · ")} 퍼즐을 하나씩 완성하면 다음 미션으로 넘어가요. 같은 조각 수 퍼즐은 하나만 풀 수 있어요.`
+      : `퍼즐 ${need}개를 완성하면 다음 미션으로 넘어가요.`;
+    const chips = mode === "group" ? `<div class="tchips" style="margin-top:6px">${groups.map((g) => {
+      const ok = p.doneGroups.includes(g);
+      return `<span class="tchip" style="${ok ? "background:#17795a;color:#fff" : ""}">${ok ? "✔ " : ""}${g}조각</span>`;
+    }).join("")}</div>` : "";
+    return `
+    <div class="row" style="justify-content:space-between;margin-bottom:8px;align-items:flex-start">
+      <div><b style="font-size:18px">${p.count} / ${need}${mode === "group" ? " 묶음" : "개"} 완성</b>
+        <div class="muted">${p.passed ? "통과 조건을 채웠어요! 더 풀어 봐도 좋아요." : rule}</div>${chips}</div>
       ${config.pentoTimerShow === false ? "" : `<div class="timer">⏱ <span class="tt">${fmt(elapsed())}</span></div>`}</div>
     <div style="height:10px;background:#e6e1d4;border-radius:99px;overflow:hidden;margin-bottom:12px">
-      <i style="display:block;height:100%;width:${Math.min(100, count() / need * 100)}%;background:#17795a;border-radius:99px"></i></div>`;
+      <i style="display:block;height:100%;width:${Math.min(100, p.count / need * 100)}%;background:#17795a;border-radius:99px"></i></div>`;
+  };
   const tickOn = () => {
     clearInterval(timerId);
     timerId = setInterval(() => {
       if (!el.isConnected) { clearInterval(timerId); return; }
-      const t = el.querySelector(".tt"); if (t && count() < need) t.textContent = fmt(elapsed());
+      const t = el.querySelector(".tt"); if (t && !prog().passed) t.textContent = fmt(elapsed());
     }, 1000);
   };
 
-  // 퍼즐 고르기 화면
+  // 퍼즐 고르기 화면 (조각 수별로 묶어서)
+  const card = (i) => {
+    const pz = PUZZLES[i], done = solved[i], lock = !done && lockedBy(i) != null;
+    return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #17795a;background:#eefaf3" : "border:2px solid transparent"}${lock ? ";opacity:.4" : ""}">
+      <div style="display:flex;justify-content:center;align-items:center;height:84px">${miniGrid(done ? done.grid : pz.rows, 9)}</div>
+      <div style="font-size:12px;color:#5d6b69">${esc(pz.level)}</div>${esc(pz.name)}${done ? `<div style="color:#17795a;font-size:12px">✔ 완성</div>` : lock ? `<div style="font-size:12px;color:#5d6b69">🔒 잠김</div>` : ""}</button>`;
+  };
   const showList = () => {
     document.body.classList.remove("pento-focus");
-    el.innerHTML = head() + `
-      <div class="sol-gallery pz-cards">${list.map((i) => {
-        const pz = PUZZLES[i], done = solved[i];
-        return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #17795a;background:#eefaf3" : "border:2px solid transparent"}">
-          <div style="display:flex;justify-content:center;align-items:center;height:84px">${miniGrid(done ? done.grid : pz.rows, 9)}</div>
-          <div style="font-size:12px;color:#5d6b69">${esc(pz.level)}</div>${esc(pz.name)}${done ? `<div style="color:#17795a;font-size:12px">✔ 완성</div>` : ""}</button>`;
-      }).join("")}</div>
-      <div class="muted" style="margin-top:8px">풀고 싶은 퍼즐을 골라요. 실물 조각으로 먼저 맞춘 뒤, 판에도 똑같이 놓아 보세요.</div>`;
-    el.querySelectorAll("[data-pz]").forEach((b) => b.onclick = () => openPuzzle(Number(b.dataset.pz)));
+    const gs = [...new Set(list.map(pzGroup))];
+    el.innerHTML = head() + gs.map((g) => {
+      const tag = mode === "group" ? (groups.includes(g) ? `<span class="tchip" style="background:#fff1e2;color:#b35c0c">필수</span>` : `<span class="tchip">선택</span>`) : "";
+      return `<h4 style="margin:14px 2px 8px;display:flex;gap:6px;align-items:center">${g}조각 퍼즐 ${tag}</h4>
+        <div class="sol-gallery pz-cards">${list.filter((i) => pzGroup(i) === g).map(card).join("")}</div>`;
+    }).join("") + `<div class="muted" style="margin-top:10px">풀고 싶은 퍼즐을 골라요. 실물 조각으로 먼저 맞춘 뒤, 판에도 똑같이 놓아 보세요.</div>`;
+    el.querySelectorAll("[data-pz]").forEach((b) => b.onclick = () => {
+      const i = Number(b.dataset.pz), j = lockedBy(i);
+      if (!solved[i] && j != null) { toast(`${pzGroup(i)}조각 퍼즐은 「${PUZZLES[j].name}」을(를) 이미 풀었어요. 다른 조각 수 퍼즐에 도전해 보세요!`); return; }
+      openPuzzle(i);
+    });
     tickOn();
   };
 
@@ -361,14 +383,14 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
     setTimeout(() => el.querySelector("[data-back]")?.scrollIntoView({ block: "start", behavior: "smooth" }), 50);
     const board = pentoBoard(el.querySelector(".pb"), pz.rows, {
       onSolved: async (grid) => {
-        const before = count();
+        const before = prog().passed;
         solved[i] = { grid };
-        const after = count();
-        toast(after >= need && before < need ? `🎉 ${need}개 완성! 다음 미션이 열려요` : `🎉 ${pz.name} 완성! (${after}/${need})`);
-        if (after >= need && before < need && !passedBefore) {
+        const p = prog();
+        toast(p.passed && !before ? `🎉 통과! 다음 미션이 열려요` : `🎉 ${pz.name} 완성! (${p.count}/${need})`);
+        if (p.passed && !before && !passedBefore) {
           passedNow = elapsed();
           autoSubmit();                 // 통과: 미션 해결로 저장
-        } else if (after >= need) {
+        } else if (p.passed) {
           autoSubmit();                 // 이미 통과한 뒤 더 푼 퍼즐도 저장
         } else {
           saveDraft(dataOut()).catch(() => toast("저장하지 못했어요. 인터넷 연결을 확인해 주세요."));
@@ -383,7 +405,9 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
 
   return {
     collect() {
-      if (count() < need) return fail(`퍼즐을 ${need}개 완성해야 통과할 수 있어요. (지금 ${count()}개)`);
+      if (!prog().passed) return fail(mode === "group"
+        ? `${groups.map((g) => `${g}조각`).join(" · ")} 퍼즐을 하나씩 완성해야 통과할 수 있어요.`
+        : `퍼즐을 ${need}개 완성해야 통과할 수 있어요. (지금 ${count()}개)`);
       const data = dataOut();
       // 걸린 시간은 처음 통과했을 때만 기록 (관리자만 볼 수 있는 곳에 저장)
       if (passedNow != null && !passedBefore) {

@@ -1,3 +1,4 @@
+import { PUZZLES } from "./puzzles.js?v=2.3";
 // 미션 문제 정의 — 기본 문제(활동지 순서)와 관리자가 추가하는 문제 형식
 // 관리자 화면에서 순서·숨김·제목·안내 글을 바꾸면 mathTour_config/main 에 저장돼요.
 
@@ -90,7 +91,9 @@ export const DEFAULT_CONFIG = {
   },
   quadratArea: 20,      // 주최측이 알려 주는 꽃밭 영역 넓이(㎡)
   pentoPuzzles: [...Array(18).keys()], // 가족이 고를 수 있는 퍼즐 번호 (기본: 18개 모두)
-  pentoNeed: 3,         // 통과에 필요한 퍼즐 수
+  pentoMode: "group",   // group: 조각 수별로 1개씩 / count: 아무 퍼즐이나 N개
+  pentoGroups: [2, 3, 4], // group 방식에서 꼭 해야 하는 조각 수 묶음
+  pentoNeed: 3,         // count 방식에서 통과에 필요한 퍼즐 수
   pentoTimePublic: false, // 「팀별 발자취」에 가족별 걸린 시간 보여 주기
   pentoTimerShow: true,   // 가족 화면 펜토미노 미션에 타이머 보여 주기
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
@@ -108,11 +111,29 @@ export function withDefaults(cfg) {
 export const isBuiltin = (q) => !!BUILTIN[q.kind];
 
 // 펜토미노 설정: 고를 수 있는 퍼즐 목록과 통과에 필요한 개수
+// 펜토미노 퍼즐의 조각 수 (2~8)
+export const pzGroup = (i) => (PUZZLES[i]?.pieces || "").length;
+
+// 펜토미노 설정
+//  mode "group": 고른 조각 수 묶음(예: 2·3·4조각)에서 하나씩 완성하면 통과, 같은 묶음은 1개만 풀 수 있어요
+//  mode "count": 아무 퍼즐이나 need개 완성하면 통과
 export function pentoSettings(cfg) {
   let list = Array.isArray(cfg?.pentoPuzzles) && cfg.pentoPuzzles.length ? cfg.pentoPuzzles.map(Number) : [...Array(18).keys()];
   list = [...new Set(list)].filter((i) => i >= 0 && i < 18).sort((a, b) => a - b);
-  const need = Math.max(1, Math.min(list.length, Number(cfg?.pentoNeed) || 3));
-  return { list, need };
+  const mode = cfg?.pentoMode === "count" ? "count" : "group";
+  let groups = Array.isArray(cfg?.pentoGroups) && cfg.pentoGroups.length ? cfg.pentoGroups.map(Number) : [2, 3, 4];
+  groups = [...new Set(groups)].filter((g) => list.some((i) => pzGroup(i) === g)).sort((a, b) => a - b);
+  if (mode === "group" && !groups.length) groups = [...new Set(list.map(pzGroup))].slice(0, 3);
+  const need = mode === "group" ? groups.length : Math.max(1, Math.min(list.length, Number(cfg?.pentoNeed) || 3));
+  return { list, need, mode, groups };
+}
+
+// 진행 상황: 몇 개 채웠는지, 통과했는지, 해결한 조각 수 묶음
+export function pentoProgress(solved, st) {
+  const done = Object.keys(solved || {}).map(Number).filter((i) => st.list.includes(i));
+  const doneGroups = [...new Set(done.map(pzGroup))];
+  const count = st.mode === "group" ? st.groups.filter((g) => doneGroups.includes(g)).length : done.length;
+  return { count, need: st.need, passed: count >= st.need, doneGroups, done };
 }
 // 펜토미노 답 → { 퍼즐번호: { grid } } (예전 한 문제 방식 답도 읽어요)
 export function pentoSolved(d) {

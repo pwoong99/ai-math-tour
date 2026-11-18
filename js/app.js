@@ -3,11 +3,11 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.2";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.2";
-import { renderInput } from "./inputs.js?v=2.2";
-import { renderPeek } from "./peek.js?v=2.2";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.2";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.3";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.3";
+import { renderInput } from "./inputs.js?v=2.3";
+import { renderPeek } from "./peek.js?v=2.3";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.3";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -20,6 +20,7 @@ const S = {
 function show(v) {
   S.view = v;
   document.body.classList.remove("pento-focus");
+  $("footer").classList.toggle("hidden", v !== "login"); // 만든 곳·버전은 첫 화면에만
   if (history.state?.mt === "base" && v !== "login" && v !== "loading") history.pushState({ mt: "app" }, ""); // 뒤로 가기 대비
   ["loading", "login", "mission", "list", "done"].forEach((n) => $("v-" + n).classList.toggle("hidden", n !== v));
   $("navbar").classList.toggle("hidden", v !== "mission");

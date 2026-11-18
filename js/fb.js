@@ -34,7 +34,7 @@ export const C = {
 
 export const SESSIONS = { am: "오전팀", pm: "오후팀" };
 export const CENTER = "순천수학교육체험센터";
-export const VERSION = "v2.2";
+export const VERSION = "v2.3";
 // 화면 아래 「만든 곳」 옆 버전 표시
 document.querySelectorAll(".ver").forEach((el) => el.textContent = VERSION);
 export const EVENT_TITLE = "2026. 가족과 함께하는 AI수학투어";
