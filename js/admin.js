@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.12";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.12";
-import { PUZZLES } from "./puzzles.js?v=2.12";
-import { miniGrid } from "./widgets.js?v=2.12";
-import { renderPeek } from "./peek.js?v=2.12";
-import { drawRoster, savePng } from "./cert.js?v=2.12";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.13";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.13";
+import { PUZZLES } from "./puzzles.js?v=2.13";
+import { miniGrid } from "./widgets.js?v=2.13";
+import { renderPeek } from "./peek.js?v=2.13";
+import { drawRoster, savePng } from "./cert.js?v=2.13";
 
 const $ = (id) => document.getElementById(id);
 const A = {
