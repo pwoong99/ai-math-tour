@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex">
   <title>AI수학투어 관리자</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛠️%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css?v=2.3">
+  <link rel="stylesheet" href="css/app.css?v=2.31">
 </head>
 <body class="admin">
   <header class="topbar">
@@ -68,7 +68,13 @@
             <h3 style="margin:0">등록된 팀 <span id="teamSess" class="muted"></span> <span id="teamCount" class="muted"></span></h3>
             <button id="btnRoster" class="btn small" type="button">🖼️ 명단 사진으로 저장</button>
           </div>
-          <div class="tbl-wrap"><table class="t" id="teamTbl"></table></div>
+          <div class="row wrap team-tools" style="gap:6px;margin-bottom:10px">
+            <button id="tSave" class="btn small" type="button" disabled>💾 바뀐 내용 모두 저장</button>
+            <button id="tDel" class="btn small red" type="button" disabled>🗑 선택한 팀 삭제</button>
+            <button id="tRand" class="btn small gray" type="button" disabled>🎲 선택한 팀 비밀번호 새로 만들기</button>
+          </div>
+          <div class="tbl-wrap"><table class="t team-tbl" id="teamTbl"></table></div>
+          <p class="muted" style="margin:8px 0 0">칸을 고친 뒤 「바뀐 내용 모두 저장」을 눌러요. 고친 칸은 노란색으로 표시돼요.</p>
         </div>
       </div>
 
@@ -195,6 +201,6 @@
     </section>
     <div class="footer">만든 곳: 순천수학교육체험센터 · <span class="ver"></span></div>
   </main>
-  <script type="module" src="js/admin.js?v=2.3"></script>
+  <script type="module" src="js/admin.js?v=2.31"></script>
 </body>
 </html>

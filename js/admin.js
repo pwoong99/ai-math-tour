@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.3";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.3";
-import { PUZZLES } from "./puzzles.js?v=2.3";
-import { miniGrid } from "./widgets.js?v=2.3";
-import { renderPeek } from "./peek.js?v=2.3";
-import { drawRoster, savePng } from "./cert.js?v=2.3";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.31";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.31";
+import { PUZZLES } from "./puzzles.js?v=2.31";
+import { miniGrid } from "./widgets.js?v=2.31";
+import { renderPeek } from "./peek.js?v=2.31";
+import { drawRoster, savePng } from "./cert.js?v=2.31";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -60,6 +60,11 @@ async function start() {
 }
 
 function setSession(s) {
+  if (s !== A.session && A.edits && Object.keys(A.edits).length && !confirm("저장하지 않은 팀 정보 수정이 있어요. 시간대를 바꾸면 사라져요. 바꿀까요?")) {
+    document.querySelectorAll(".sessPick button").forEach((b) => b.classList.toggle("on", b.dataset.s === A.session));
+    return;
+  }
+  if (A.edits) { A.edits = {}; A.checked = new Set(); }
   A.session = s;
   localStorage.setItem("mt_admin_session", s);
   $("teamSess").textContent = `· ${SESSIONS[s]}`;
@@ -156,65 +161,132 @@ $("bAdd").onclick = async () => {
   if (n) { toast(`${SESSIONS[A.session]}에 ${n}팀을 추가했어요.`); if (!errs.length) $("bulk").value = ""; }
 };
 
+// 등록된 팀 표: 고친 내용(A.edits)과 체크한 팀(A.checked)은 실시간 갱신에도 그대로 남아요
+A.edits = {}; A.checked = new Set();
+function teamVal(t, f) { return A.edits[t.id]?.[f] ?? String(f === "pw" ? (t.pw ?? "") : (t[f] || "")); }
 function renderTeams() {
   const list = fullTeams();
+  const ids = new Set(list.map((t) => t.id));
+  Object.keys(A.edits).forEach((id) => { if (!ids.has(id)) delete A.edits[id]; });
+  [...A.checked].forEach((id) => { if (!ids.has(id)) A.checked.delete(id); });
   $("teamCount").textContent = `(${list.length}팀)`;
   $("schoolList").innerHTML = [...new Set(list.map((t) => t.school).filter(Boolean))].map((s) => `<option value="${esc(s)}">`).join("");
-  $("teamTbl").innerHTML = `<thead><tr><th>팀</th><th>학교</th><th>학생 이름</th><th class="c">비밀번호</th><th class="c">진행</th><th class="c">관리</th></tr></thead>
-    <tbody>${list.map((t) => `<tr data-id="${t.id}">
-      <td><b>${esc(t.label)}</b></td>
-      <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="school" value="${esc(t.school || "")}"></td>
-      <td><input class="inp" style="padding:6px 8px;font-size:15px" data-f="name" value="${esc(t.name || "")}"></td>
-      <td class="c"><div class="row" style="gap:4px;justify-content:center"><input class="inp" style="padding:6px;font-size:16px;width:80px;text-align:center;font-weight:800" data-f="pw" inputmode="numeric" maxlength="4" value="${esc(t.pw ?? "")}"><button class="btn small gray" data-a="rand" type="button">🎲</button></div></td>
-      <td class="c">${Object.keys(t.solved || {}).length}</td>
-      <td class="c"><button class="btn small" data-a="save" type="button">저장</button> <button class="btn small red" data-a="del" type="button">삭제</button></td></tr>`).join("")
-    || `<tr><td colspan="6" class="c muted" style="padding:24px">아직 등록된 팀이 없어요.</td></tr>`}</tbody>`;
+  const allOn = list.length && list.every((t) => A.checked.has(t.id));
+  $("teamTbl").innerHTML = `<thead><tr><th class="c"><input type="checkbox" id="tAll" ${allOn ? "checked" : ""} aria-label="모두 선택"></th><th>팀</th><th>학교</th><th>학생 이름</th><th class="c">비밀번호</th></tr></thead>
+    <tbody>${list.map((t) => {
+      const e = A.edits[t.id] || {};
+      const cell = (f, extra = "") => `<input class="inp ${e[f] != null ? "dirty" : ""}" data-f="${f}" value="${esc(teamVal(t, f))}" ${extra}>`;
+      return `<tr data-id="${t.id}" class="${A.checked.has(t.id) ? "sel" : ""}">
+        <td class="c"><input type="checkbox" class="tChk" ${A.checked.has(t.id) ? "checked" : ""} aria-label="${esc(t.label)} 선택"></td>
+        <td><b>${esc(t.label)}</b></td>
+        <td>${cell("school")}</td>
+        <td>${cell("name")}</td>
+        <td class="c">${cell("pw", 'inputmode="numeric" maxlength="4" style="text-align:center;font-weight:800"')}</td></tr>`;
+    }).join("") || `<tr><td colspan="5" class="c muted" style="padding:24px">아직 등록된 팀이 없어요.</td></tr>`}</tbody>`;
   $("teamTbl").querySelectorAll("tr[data-id]").forEach((tr) => {
-    const id = tr.dataset.id;
-    tr.querySelector('[data-a="rand"]').onclick = () => tr.querySelector('[data-f="pw"]').value = randomPw();
-    tr.querySelector('[data-a="save"]').onclick = () => saveTeam(id, tr);
-    tr.querySelector('[data-a="del"]').onclick = () => delTeam(id);
+    const id = tr.dataset.id, t = list.find((x) => x.id === id);
+    tr.querySelectorAll("input[data-f]").forEach((inp) => inp.oninput = () => {
+      const f = inp.dataset.f;
+      if (f === "pw") inp.value = inp.value.replace(/\D/g, "").slice(0, 4);
+      const orig = String(f === "pw" ? (t.pw ?? "") : (t[f] || ""));
+      A.edits[id] = A.edits[id] || {};
+      if (inp.value === orig) delete A.edits[id][f]; else A.edits[id][f] = inp.value;
+      if (!Object.keys(A.edits[id]).length) delete A.edits[id];
+      inp.classList.toggle("dirty", inp.value !== orig);
+      teamTools();
+    });
+    tr.querySelector(".tChk").onchange = (ev) => {
+      ev.target.checked ? A.checked.add(id) : A.checked.delete(id);
+      tr.classList.toggle("sel", ev.target.checked);
+      $("tAll").checked = list.length && list.every((x) => A.checked.has(x.id));
+      teamTools();
+    };
   });
+  $("tAll").onchange = (ev) => { list.forEach((t) => ev.target.checked ? A.checked.add(t.id) : A.checked.delete(t.id)); renderTeams(); };
+  teamTools();
+}
+function teamTools() {
+  const n = Object.keys(A.edits).length, c = A.checked.size;
+  $("tSave").disabled = !n; $("tSave").textContent = n ? `💾 바뀐 내용 모두 저장 (${n}팀)` : "💾 바뀐 내용 모두 저장";
+  $("tDel").disabled = !c; $("tDel").textContent = c ? `🗑 선택한 팀 삭제 (${c}팀)` : "🗑 선택한 팀 삭제";
+  $("tRand").disabled = !c;
 }
 
-async function saveTeam(id, tr) {
-  const p = A.priv[id]; if (!p) return;
-  const school = normSchool(tr.querySelector('[data-f="school"]').value);
-  const name = normName(tr.querySelector('[data-f="name"]').value);
-  const pw = tr.querySelector('[data-f="pw"]').value.trim();
-  const pe = checkPw(pw); if (pe) return alert(pe);
-  if (!school || !name) return alert("학교와 이름을 모두 써 주세요.");
-  const dup = Object.entries(A.priv).find(([k, x]) => k !== id && x.school === school && x.name === name);
-  if (dup) return alert(`${school} ${name} 학생은 이미 ${dup[1].label}으로 등록돼 있어요.`);
-  const key = await loginKey(A.session, school, name, Number(pw));
-  const b = writeBatch(db);
-  if (key !== p.key) {
-    b.delete(doc(db, C.logins, p.key));
-    b.set(doc(db, C.logins, key), { teamId: id, session: A.session });
+// 선택한 팀 비밀번호 새로 만들기 (저장 버튼을 눌러야 반영돼요)
+$("tRand").onclick = () => {
+  const used = new Set();
+  fullTeams().filter((t) => A.checked.has(t.id)).forEach((t) => {
+    const pw = randomPw(used); used.add(pw);
+    A.edits[t.id] = { ...(A.edits[t.id] || {}), pw };
+  });
+  renderTeams();
+  toast("새 비밀번호를 넣었어요. 「바뀐 내용 모두 저장」을 눌러야 반영돼요.");
+};
+
+// 바뀐 내용 모두 저장
+$("tSave").onclick = async () => {
+  const list = fullTeams();
+  const rows = Object.keys(A.edits).map((id) => {
+    const t = list.find((x) => x.id === id), p = A.priv[id];
+    return { id, t, p, school: normSchool(teamVal(t, "school")), name: normName(teamVal(t, "name")), pw: teamVal(t, "pw").trim() };
+  }).filter((r) => r.t && r.p);
+  // 검사
+  for (const r of rows) {
+    if (!r.school || !r.name) return alert(`${r.t.label}: 학교와 이름을 모두 써 주세요.`);
+    const pe = checkPw(r.pw); if (pe) return alert(`${r.t.label}: ${pe}`);
   }
-  b.set(doc(db, C.teamsPrivate, id), { ...p, school, name, pw: Number(pw), key });
-  await b.commit();
-  await refreshPriv(); await updateSchools();
-  toast(`${p.label} 정보를 저장했어요.${key !== p.key ? " (이미 접속한 기기는 그대로 쓸 수 있어요)" : ""}`);
-}
+  const finalOf = (id) => { const r = rows.find((x) => x.id === id); return r ? r : { school: A.priv[id]?.school, name: A.priv[id]?.name }; };
+  for (const r of rows) {
+    const dup = Object.keys(A.priv).find((k) => k !== r.id && finalOf(k).school === r.school && finalOf(k).name === r.name);
+    if (dup) return alert(`${r.school} ${r.name} 학생이 ${r.t.label}과 ${A.priv[dup].label}에 함께 있어요. 한 팀만 남겨 주세요.`);
+  }
+  $("tSave").disabled = true;
+  try {
+    const b = writeBatch(db);
+    let keyChanged = 0;
+    for (const r of rows) {
+      const key = await loginKey(A.session, r.school, r.name, Number(r.pw));
+      if (key !== r.p.key) {
+        keyChanged++;
+        b.delete(doc(db, C.logins, r.p.key));
+        b.set(doc(db, C.logins, key), { teamId: r.id, session: A.session });
+      }
+      b.set(doc(db, C.teamsPrivate, r.id), { ...r.p, school: r.school, name: r.name, pw: Number(r.pw), key });
+    }
+    await b.commit();
+    A.edits = {};
+    await refreshPriv(); await updateSchools();
+    renderTeams();
+    toast(`${rows.length}팀을 저장했어요.${keyChanged ? " (이미 접속한 기기는 그대로 쓸 수 있어요)" : ""}`);
+  } catch (e) { console.error(e); alert("저장하지 못했어요. 다시 눌러 주세요."); teamTools(); }
+};
 
-async function delTeam(id) {
-  const p = A.priv[id];
-  if (!confirm(`${p?.label} (${p?.school} ${p?.name}) 팀을 지울까요?\n이 팀이 낸 답도 함께 지워져요.`)) return;
-  const b = writeBatch(db);
-  b.delete(doc(db, C.teams, id));
-  b.delete(doc(db, C.teamsPrivate, id));
-  if (p?.key) b.delete(doc(db, C.logins, p.key));
-  const [ans, pv] = await Promise.all([
-    getDocs(query(collection(db, C.answers), where("teamId", "==", id))),
-    getDocs(query(collection(db, C.priv), where("teamId", "==", id)))
-  ]);
-  ans.forEach((d) => b.delete(d.ref)); pv.forEach((d) => b.delete(d.ref));
-  await b.commit();
-  delete A.priv[id];
-  await updateSchools();
-  toast("팀을 지웠어요.");
-}
+// 선택한 팀 삭제
+$("tDel").onclick = async () => {
+  const sel = fullTeams().filter((t) => A.checked.has(t.id));
+  if (!sel.length) return;
+  if (!confirm(`아래 ${sel.length}팀을 지울까요? 이 팀들이 낸 답도 함께 지워져요.\n\n${sel.map((t) => `${t.label} ${t.school} ${t.name}`).join("\n")}`)) return;
+  $("tDel").disabled = true;
+  try {
+    for (const t of sel) {
+      const p = A.priv[t.id];
+      const b = writeBatch(db);
+      b.delete(doc(db, C.teams, t.id));
+      b.delete(doc(db, C.teamsPrivate, t.id));
+      if (p?.key) b.delete(doc(db, C.logins, p.key));
+      const [ans, pv] = await Promise.all([
+        getDocs(query(collection(db, C.answers), where("teamId", "==", t.id))),
+        getDocs(query(collection(db, C.priv), where("teamId", "==", t.id)))
+      ]);
+      ans.forEach((d) => b.delete(d.ref)); pv.forEach((d) => b.delete(d.ref));
+      await b.commit();
+      delete A.priv[t.id]; delete A.edits[t.id]; A.checked.delete(t.id);
+    }
+    await updateSchools();
+    toast(`${sel.length}팀을 지웠어요.`);
+  } catch (e) { console.error(e); alert("지우지 못한 팀이 있어요. 다시 눌러 주세요."); }
+  renderTeams();
+};
 
 $("btnRoster").onclick = async () => {
   const list = fullTeams();

@@ -421,3 +421,37 @@ body.pento-focus main { padding-bottom: 24px; }
 .navbar #btnNavList { flex: none; min-width: 52px; }
 .navbar #btnPrev { flex: none; }
 #qInput [data-back] { scroll-margin-top: 70px; }   /* 펜토미노 판을 열면 머리말에 가리지 않게 */
+
+/* 관리자 등록된 팀 표 (휴대폰에서도 보이게 간단히) */
+.team-tbl td, .team-tbl th { padding: 6px 4px; }
+.team-tbl .inp { padding: 7px 8px; font-size: 16px; border-radius: 10px; border-width: 1.5px; min-width: 0; }
+.team-tbl td:nth-child(3) .inp { min-width: 110px; }
+.team-tbl td:nth-child(4) .inp { min-width: 76px; }
+.team-tbl td:nth-child(5) .inp { width: 70px; }
+.team-tbl input[type=checkbox] { width: 20px; height: 20px; }
+.team-tbl tr.sel td { background: #fff4f2; }
+.team-tbl .inp.dirty { background: #fff8d6; border-color: #e0b200; }
+.team-tbl td:nth-child(2) { white-space: nowrap; }
+@media (max-width: 480px) {
+  body.admin main { padding: 12px 8px 40px; }
+  body.admin .card { padding: 14px 10px; }
+  .team-tools .btn { flex: 1 1 auto; }
+  /* 휴대폰: 한 팀을 두 줄로 — 윗줄 팀·학교, 아랫줄 이름·비밀번호 */
+  .team-tbl, .team-tbl tbody { display: block; }
+  .team-tbl thead tr { display: flex; align-items: center; gap: 8px; }
+  .team-tbl thead th { border: 0; background: transparent; }
+  .team-tbl thead th:not(:first-child) { display: none; }
+  .team-tbl thead th:first-child::after { content: " 모두 선택"; font-weight: 700; color: var(--sub); }
+  .team-tbl thead th:first-child { display: flex; align-items: center; gap: 6px; padding: 8px 6px; }
+  .team-tbl tbody tr {
+    display: grid; grid-template-columns: 28px 40px 1fr 74px; grid-template-areas: "c l s s" "c l n p";
+    gap: 6px; padding: 8px 6px; border-bottom: 1px solid var(--line); align-items: center;
+  }
+  .team-tbl tbody td { border: 0; padding: 0; }
+  .team-tbl tbody td:nth-child(1) { grid-area: c; }
+  .team-tbl tbody td:nth-child(2) { grid-area: l; }
+  .team-tbl tbody td:nth-child(3) { grid-area: s; }
+  .team-tbl tbody td:nth-child(4) { grid-area: n; }
+  .team-tbl tbody td:nth-child(5) { grid-area: p; }
+  .team-tbl td .inp { width: 100%; min-width: 0 !important; }
+}
