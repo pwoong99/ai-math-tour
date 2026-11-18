@@ -89,7 +89,8 @@ export const DEFAULT_CONFIG = {
     answerK: 4
   },
   quadratArea: 20,      // 주최측이 알려 주는 꽃밭 영역 넓이(㎡)
-  pentoPuzzle: 7,       // PUZZLES 번호 (기본: 4조각 ① 우주선)
+  pentoPuzzles: [...Array(18).keys()], // 가족이 고를 수 있는 퍼즐 번호 (기본: 18개 모두)
+  pentoNeed: 3,         // 통과에 필요한 퍼즐 수
   pentoTimePublic: false,
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
   gasUrl: "https://script.google.com/macros/s/AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58/exec"
@@ -104,6 +105,21 @@ export function withDefaults(cfg) {
 }
 
 export const isBuiltin = (q) => !!BUILTIN[q.kind];
+
+// 펜토미노 설정: 고를 수 있는 퍼즐 목록과 통과에 필요한 개수
+export function pentoSettings(cfg) {
+  let list = Array.isArray(cfg?.pentoPuzzles) && cfg.pentoPuzzles.length ? cfg.pentoPuzzles.map(Number) : [...Array(18).keys()];
+  list = [...new Set(list)].filter((i) => i >= 0 && i < 18).sort((a, b) => a - b);
+  const need = Math.max(1, Math.min(list.length, Number(cfg?.pentoNeed) || 3));
+  return { list, need };
+}
+// 펜토미노 답 → { 퍼즐번호: { grid } } (예전 한 문제 방식 답도 읽어요)
+export function pentoSolved(d) {
+  if (!d) return {};
+  if (d.solved && typeof d.solved === "object") return d.solved;
+  if (Array.isArray(d.grid) && d.puzzle != null) return { [d.puzzle]: { grid: d.grid } };
+  return {};
+}
 export const qTitle = (q) => q.title || BUILTIN[q.kind]?.title || "새 문제";
 export const qDesc = (q) => (q.desc ?? BUILTIN[q.kind]?.desc) || "";
 export const qIcon = (q) => BUILTIN[q.kind]?.icon || ({ number: "🔢", text: "📝", choice: "☑️", photo: "📷" }[q.kind] || "❓");

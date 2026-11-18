@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.01";
-import { BUILTIN, funOptions, qTitle, qIcon } from "./questions.js?v=2.01";
-import { PUZZLES } from "./puzzles.js?v=2.01";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.01";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.1";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.1";
+import { PUZZLES } from "./puzzles.js?v=2.1";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.1";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -291,61 +291,99 @@ R.fibo = (el, q, { prev }) => {
 };
 
 /* 8. 펜토미노 */
-R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit }) => {
-  const idx = Number(config.pentoPuzzle) || 0;
-  const pz = PUZZLES[idx] || PUZZLES[0];
-  const startKey = `mt_pento_start_${teamId}_${idx}_${round}`;
-  const already = prev && prev.puzzle === idx && Array.isArray(prev.grid);
-  let result = already ? { grid: prev.grid } : null;
-  let timerId = null;
+R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) => {
+  const { list, need } = pentoSettings(config);
+  const solved = { ...pentoSolved(prev) };            // { 퍼즐번호: { grid } }
+  const passedBefore = Object.keys(solved).length >= need && !!prev?.passed;
+  const startKey = `mt_pento_start_${teamId}_${round}`;
+  if (!localStorage.getItem(startKey)) localStorage.setItem(startKey, String(Date.now()));
+  let timerId = null, passedNow = null;
   const fmt = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
+  const elapsed = () => Math.round((Date.now() - Number(localStorage.getItem(startKey))) / 1000);
+  const count = () => Object.keys(solved).filter((k) => list.includes(Number(k))).length;
+  const dataOut = () => ({ solved, count: count(), need, passed: count() >= need });
 
-  const startBoard = (initial) => {
-    if (!localStorage.getItem(startKey)) localStorage.setItem(startKey, String(Date.now()));
-    el.innerHTML = `
-      <div class="row" style="justify-content:space-between;margin-bottom:6px">
-        <div><b>${esc(pz.level)} · ${esc(pz.name)}</b><div class="muted">${pz.pieces.length}조각 · ${pz.pieces.length * 5}칸</div></div>
-        <div class="timer">⏱ <span class="tt">0분 00초</span></div></div>
+  const head = () => `
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <div><b style="font-size:18px">${count()} / ${need}개 완성</b>
+        <div class="muted">${count() >= need ? "통과 조건을 채웠어요! 더 풀어 봐도 좋아요." : `퍼즐 ${need}개를 완성하면 다음 미션으로 넘어가요.`}</div></div>
+      <div class="timer">⏱ <span class="tt">${fmt(elapsed())}</span></div></div>
+    <div style="height:10px;background:#e6e1d4;border-radius:99px;overflow:hidden;margin-bottom:12px">
+      <i style="display:block;height:100%;width:${Math.min(100, count() / need * 100)}%;background:#17795a;border-radius:99px"></i></div>`;
+  const tickOn = () => {
+    clearInterval(timerId);
+    timerId = setInterval(() => {
+      if (!el.isConnected) { clearInterval(timerId); return; }
+      const t = el.querySelector(".tt"); if (t && count() < need) t.textContent = fmt(elapsed());
+    }, 1000);
+  };
+
+  // 퍼즐 고르기 화면
+  const showList = () => {
+    el.innerHTML = head() + `
+      <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(100px,1fr))">${list.map((i) => {
+        const pz = PUZZLES[i], done = solved[i];
+        return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #17795a;background:#eefaf3" : "border:2px solid transparent"}">
+          <div style="display:flex;justify-content:center;align-items:center;height:84px">${miniGrid(done ? done.grid : pz.rows, 9)}</div>
+          <div style="font-size:12px;color:#5d6b69">${esc(pz.level)}</div>${esc(pz.name)}${done ? `<div style="color:#17795a;font-size:12px">✔ 완성</div>` : ""}</button>`;
+      }).join("")}</div>
+      <div class="muted" style="margin-top:8px">풀고 싶은 퍼즐을 골라요. 실물 조각으로 먼저 맞춘 뒤, 판에도 똑같이 놓아 보세요.</div>`;
+    el.querySelectorAll("[data-pz]").forEach((b) => b.onclick = () => openPuzzle(Number(b.dataset.pz)));
+    tickOn();
+  };
+
+  // 퍼즐 판 화면
+  const openPuzzle = (i, again = false) => {
+    const pz = PUZZLES[i];
+    if (solved[i] && !again) {
+      el.innerHTML = head() + `<div class="card" style="text-align:center;background:#e3f3ec">
+          <b>${esc(pz.level)} · ${esc(pz.name)} 완성!</b>
+          <div style="margin:10px auto;display:flex;justify-content:center">${miniGrid(solved[i].grid, 26)}</div>
+          <div class="row" style="justify-content:center">
+            <button type="button" class="btn gray small" data-back>← 퍼즐 목록</button>
+            <button type="button" class="btn ghost small" data-again>다른 방법으로 다시 맞추기</button></div></div>`;
+      el.querySelector("[data-back]").onclick = showList;
+      el.querySelector("[data-again]").onclick = () => openPuzzle(i, true);
+      tickOn();
+      return;
+    }
+    el.innerHTML = head() + `
+      <div class="row" style="justify-content:space-between;margin-bottom:4px">
+        <button type="button" class="btn gray small" data-back>← 퍼즐 목록</button>
+        <div style="text-align:right"><b>${esc(pz.level)} · ${esc(pz.name)}</b><div class="muted">${pz.pieces.length}조각 · ${pz.pieces.length * 5}칸</div></div></div>
       <div class="pb"></div>
       <button type="button" class="btn gray small" style="margin-top:8px" data-reset>처음부터 다시</button>`;
-    const tt = el.querySelector(".tt");
-    const tick = () => {
-      if (!el.isConnected) { clearInterval(timerId); return; }
-      const s = Math.round((Date.now() - Number(localStorage.getItem(startKey))) / 1000);
-      tt.textContent = fmt(s);
-    };
-    tick(); clearInterval(timerId); timerId = setInterval(tick, 1000);
+    el.querySelector("[data-back]").onclick = showList;
+    tickOn();
     const board = pentoBoard(el.querySelector(".pb"), pz.rows, {
-      initialGrid: initial,
-      onSolved: (grid) => {
-        clearInterval(timerId);
-        const sec = Math.round((Date.now() - Number(localStorage.getItem(startKey))) / 1000);
-        result = { grid, seconds: sec };
-        toast(`🎉 완성! ${fmt(sec)} 걸렸어요`);
-        autoSubmit();
+      onSolved: async (grid) => {
+        const before = count();
+        solved[i] = { grid };
+        const after = count();
+        toast(after >= need && before < need ? `🎉 ${need}개 완성! 다음 미션이 열려요` : `🎉 ${pz.name} 완성! (${after}/${need})`);
+        if (after >= need && before < need && !passedBefore) {
+          passedNow = elapsed();
+          autoSubmit();                 // 통과: 미션 해결로 저장
+        } else if (after >= need) {
+          autoSubmit();                 // 이미 통과한 뒤 더 푼 퍼즐도 저장
+        } else {
+          saveDraft(dataOut()).catch(() => toast("저장하지 못했어요. 인터넷 연결을 확인해 주세요."));
+        }
+        setTimeout(showList, 900);
       }
     });
     el.querySelector("[data-reset]").onclick = () => board.reset();
   };
 
-  if (already) {
-    el.innerHTML = `<div class="card" style="text-align:center;background:#e3f3ec">
-        <div style="font-size:40px">🎉</div><b>${esc(pz.level)} · ${esc(pz.name)} 완성!</b>
-        <div style="margin:10px auto;display:flex;justify-content:center">${miniGrid(prev.grid, 26)}</div>
-        <button type="button" class="btn ghost small" data-again>다른 방법으로 다시 맞춰 보기</button>
-        <div class="muted" style="margin-top:6px">다시 맞춰도 처음 걸린 시간 기록은 바뀌지 않아요.</div></div>`;
-    el.querySelector("[data-again]").onclick = () => { result = null; startBoard(null); };
-  } else {
-    startBoard(null);
-  }
+  showList();
 
   return {
     collect() {
-      if (!result) return fail("판의 빈칸을 모두 채워야 통과할 수 있어요. 실물 퍼즐과 똑같이 놓아 보세요!");
-      const data = { grid: result.grid, puzzle: idx, name: pz.name };
-      // 걸린 시간은 처음 완성했을 때만 기록 (관리자만 볼 수 있는 곳에 저장)
-      if (result.seconds != null && !already) {
-        return { ok: true, data, priv: { kind: "pentoTime", seconds: result.seconds, puzzle: idx } };
+      if (count() < need) return fail(`퍼즐을 ${need}개 완성해야 통과할 수 있어요. (지금 ${count()}개)`);
+      const data = dataOut();
+      // 걸린 시간은 처음 통과했을 때만 기록 (관리자만 볼 수 있는 곳에 저장)
+      if (passedNow != null && !passedBefore) {
+        return { ok: true, data, priv: { kind: "pentoTime", seconds: passedNow, puzzles: Object.keys(solved).map(Number), need } };
       }
       return { ok: true, data };
     }

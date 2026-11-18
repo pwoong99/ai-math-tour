@@ -3,11 +3,11 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.01";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.01";
-import { renderInput } from "./inputs.js?v=2.01";
-import { renderPeek } from "./peek.js?v=2.01";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.01";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.1";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.1";
+import { renderInput } from "./inputs.js?v=2.1";
+import { renderPeek } from "./peek.js?v=2.1";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.1";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -181,14 +181,18 @@ function openMission(i) {
   $("qDesc").classList.toggle("hidden", !d);
   $("qErr").textContent = "";
   $("qDone").classList.add("hidden");
-  $("btnSubmit").classList.toggle("hidden", q.kind === "pento" && !!S.mine[q.id]);
+  $("btnSubmit").classList.remove("hidden");
   $("btnSubmit").textContent = solved(q) ? "답 고쳐서 다시 제출하기" : "답 제출하기";
   $("btnPeek").classList.toggle("hidden", q.kind === "scale");
   S.handle = renderInput($("qInput"), q, {
     prev: S.mine[q.id], config: S.config, teamId: S.me.teamId, round: S.team?.round || 0,
-    autoSubmit: () => submit()
+    autoSubmit: () => submit(),
+    // 미션 해결로 치지 않고 답만 중간 저장 (펜토미노: 퍼즐 하나씩 완성할 때)
+    saveDraft: (data) => setDoc(doc(db, C.answers, `${S.me.teamId}_${q.id}`), {
+      teamId: S.me.teamId, session: S.me.session, qid: q.id, label: S.team.label, kind: q.kind, data, updatedAt: serverTimestamp()
+    })
   });
-  if (q.kind === "pento") $("btnSubmit").textContent = "완성한 판 제출하기";
+  if (q.kind === "pento") $("btnSubmit").textContent = "미션 통과하기";
   renderProgress();
   // 관리자 진행 현황에 "지금 보고 있는 미션" 알려 주기
   if (S.team?.current !== q.id) {
@@ -223,14 +227,13 @@ async function submit() {
     $("qDone").innerHTML = `<div class="card" style="background:#e3f3ec;margin:0;text-align:center">
         <b style="font-size:18px">✅ 제출했어요!</b><div class="muted">다른 가족은 어떻게 답했을까요?</div>
         <div class="row" style="margin-top:10px">
-          ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>👣 발자취 보기</button>`}
+          ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>발자취 보기</button>`}
           <button type="button" class="btn grow" data-next>${last ? "🏆 완주!" : "다음 미션 ▶"}</button></div></div>`;
     $("qDone").classList.remove("hidden");
     $("qDone").querySelector("[data-peek]")?.addEventListener("click", () => openPeek(q));
     $("qDone").querySelector("[data-next]").onclick = goNext;
     $("qDone").scrollIntoView({ block: "center", behavior: "smooth" });
-    btn.textContent = "답 고쳐서 다시 제출하기";
-    if (q.kind === "pento") btn.classList.add("hidden");
+    btn.textContent = q.kind === "pento" ? "미션 통과하기" : "답 고쳐서 다시 제출하기";
   } catch (e) {
     console.error(e);
     $("qErr").textContent = "저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.";
@@ -276,7 +279,7 @@ function openPeek(q) {
   closePeek();
   const bg = document.createElement("div");
   bg.className = "sheet-bg";
-  bg.innerHTML = `<div class="sheet"><div class="sheet-head"><h3>👣 ${esc(qTitle(q))}</h3><button class="x" type="button">✕</button></div>
+  bg.innerHTML = `<div class="sheet"><div class="sheet-head"><h3>${esc(qTitle(q))}</h3><button class="x" type="button">✕</button></div>
     <div class="peek-sub">${SESSIONS[S.me.session]} 팀별 발자취예요. 실시간으로 바뀌어요!</div><div class="pk"><div class="loading"><div class="spin"></div></div></div></div>`;
   document.body.appendChild(bg);
   document.body.style.overflow = "hidden";

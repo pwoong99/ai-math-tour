@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.01";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon } from "./questions.js?v=2.01";
-import { PUZZLES } from "./puzzles.js?v=2.01";
-import { miniGrid } from "./widgets.js?v=2.01";
-import { renderPeek } from "./peek.js?v=2.01";
-import { drawRoster, savePng } from "./cert.js?v=2.01";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.1";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.1";
+import { PUZZLES } from "./puzzles.js?v=2.1";
+import { miniGrid } from "./widgets.js?v=2.1";
+import { renderPeek } from "./peek.js?v=2.1";
+import { drawRoster, savePng } from "./cert.js?v=2.1";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -282,7 +282,8 @@ function renderQuestions(fillSettings) {
   $("sText").value = c.cipher.text || ""; $("sKey").value = c.cipher.key ?? "?"; $("sHint").value = c.cipher.hint || "";
   $("sAns").value = c.cipher.answer || ""; $("sAnsK").value = c.cipher.answerK ?? "";
   $("sArea").value = c.quadratArea; $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
-  A.pz = Number(c.pentoPuzzle) || 0;
+  const ps = pentoSettings(c);
+  A.pzSet = new Set(ps.list); $("pzNeed").value = ps.need;
   renderPz(); cipherCheck();
 }
 $("cKind").innerHTML = Object.entries(CUSTOM_KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
@@ -319,11 +320,18 @@ $("qSave").onclick = async () => {
 };
 
 function renderPz() {
-  $("pzPick").innerHTML = PUZZLES.map((p, i) => `<button type="button" data-i="${i}" class="${i === A.pz ? "on" : ""}">
+  $("pzCnt").textContent = A.pzSet.size;
+  $("pzPick").innerHTML = PUZZLES.map((p, i) => `<button type="button" data-i="${i}" class="${A.pzSet.has(i) ? "on" : ""}">
     <div style="display:flex;justify-content:center;height:96px;align-items:center">${miniGrid(p.rows, 10)}</div>
     ${esc(p.level)}<br>${esc(p.name)}<div class="muted" style="font-size:11px">${p.pieces}</div></button>`).join("");
-  $("pzPick").querySelectorAll("button").forEach((b) => b.onclick = () => { A.pz = Number(b.dataset.i); renderPz(); });
+  $("pzPick").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    const i = Number(b.dataset.i);
+    A.pzSet.has(i) ? A.pzSet.delete(i) : A.pzSet.add(i);
+    renderPz();
+  });
 }
+$("pzAll").onclick = () => { A.pzSet = new Set(PUZZLES.map((_, i) => i)); renderPz(); };
+$("pzNone").onclick = () => { A.pzSet = new Set(); renderPz(); };
 function cipherCheck() {
   const t = $("sText").value.toUpperCase(), a = $("sAns").value.toUpperCase().trim(), k = Number($("sAnsK").value || $("sKey").value);
   if (!t || !a || !Number.isFinite(k) || !k) { $("sCheck").textContent = ""; return; }
@@ -334,6 +342,9 @@ function cipherCheck() {
 
 $("sSave").onclick = async () => {
   const area = Number($("sArea").value);
+  const need = Number($("pzNeed").value);
+  if (!A.pzSet.size) return toast("가족이 고를 수 있는 펜토미노 퍼즐을 하나 이상 골라 주세요.");
+  if (!Number.isInteger(need) || need < 1 || need > A.pzSet.size) return toast(`통과에 필요한 퍼즐 수는 1부터 ${A.pzSet.size} 사이로 써 주세요.`);
   if (!(area > 0)) return toast("꽃밭 넓이를 숫자로 써 주세요.");
   const key = $("sKey").value.trim();
   if (key !== "?" && !/^\d{1,2}$/.test(key)) return toast("열쇠 k는 숫자(1~25) 또는 ?로 써 주세요.");
@@ -344,7 +355,7 @@ $("sSave").onclick = async () => {
       text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
       answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
     },
-    quadratArea: area, gasUrl: gas, pentoPuzzle: A.pz, pentoTimePublic: $("sTime").checked
+    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: need, pentoTimePublic: $("sTime").checked
   });
   toast("설정을 저장했어요.");
 };
@@ -400,8 +411,8 @@ async function loadResults() {
     const pt = rows.filter((r) => r.kind === "pentoTime").sort((a, b) => a.seconds - b.seconds);
     const f = (s) => `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
     $("rPento").innerHTML = pt.length ? `<div class="muted" style="margin-bottom:8px">${A.config.pentoTimePublic ? "🔓 가족 「팀별 발자취」에 공개 중" : "🔒 비공개 (문제 설정에서 공개할 수 있어요)"}</div>
-      <div class="tbl-wrap" style="max-height:420px"><table class="t"><thead><tr><th class="c">순위</th><th>시간대</th><th>팀</th><th>학교 · 이름</th><th>퍼즐</th><th class="c">걸린 시간</th></tr></thead>
-      <tbody>${pt.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${sessName(r.session)}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td>${esc(PUZZLES[r.puzzle]?.name || "")}</td><td class="c"><b>${f(r.seconds)}</b></td></tr>`).join("")}</tbody></table></div>` : "아직 완성한 팀이 없어요.";
+      <div class="tbl-wrap" style="max-height:420px"><table class="t"><thead><tr><th class="c">순위</th><th>시간대</th><th>팀</th><th>학교 · 이름</th><th>완성한 퍼즐</th><th class="c">통과까지 걸린 시간</th></tr></thead>
+      <tbody>${pt.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${sessName(r.session)}</td><td>${esc(r.label)}</td><td>${name(r)}</td><td>${esc((r.puzzles || (r.puzzle != null ? [r.puzzle] : [])).map((i) => PUZZLES[i]?.name).filter(Boolean).join(", "))}</td><td class="c"><b>${f(r.seconds)}</b></td></tr>`).join("")}</tbody></table></div>` : "아직 완성한 팀이 없어요.";
   } finally { $("rLoad").disabled = false; }
 }
 
@@ -415,7 +426,7 @@ function summarize(kind, d, priv) {
     case "stride": return `1보 ${d.step}cm / 보폭 거리 ${d.walk}m / GPS ${d.gps}m`;
     case "quadrat": return `직접 ${d.eye} / AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2} / 전체 ${d.total}`;
     case "fibo": return `${d.plant} / ${d.petals}장`;
-    case "pento": return `완성 (${d.name || ""})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`;
+    case "pento": { const sv = Object.keys(pentoSolved(d)).map((i) => PUZZLES[i]?.name).filter(Boolean); return `${sv.length}개 완성 (${sv.join(", ")})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`; }
     case "fun": return (d.picks || []).map((id) => qTitle(A.config.questions.find((q) => q.id === id) || { kind: "", title: id })).join(" · ");
     case "scale": return priv?.value != null ? `${priv.value}점` : "제출";
     case "comment": case "text": return d.text;
@@ -486,7 +497,7 @@ function openAdminPeek() {
   const q = qs.find((x) => x.id === pkQid);
   const box = $("pkBox");
   if (!q) { box.innerHTML = `<div class="empty">보이는 미션이 없어요.</div>`; return; }
-  box.innerHTML = `<div class="sheet-head" style="position:static"><h3>👣 ${qs.indexOf(q) + 1}. ${esc(qTitle(q))} <span class="muted">· ${SESSIONS[A.session]}</span></h3></div><div class="pk"><div class="loading"><div class="spin"></div></div></div>`;
+  box.innerHTML = `<div class="sheet-head" style="position:static"><h3>${qs.indexOf(q) + 1}. ${esc(qTitle(q))} <span class="muted">· ${SESSIONS[A.session]}</span></h3></div><div class="pk"><div class="loading"><div class="spin"></div></div></div>`;
   const body = box.querySelector(".pk");
   let list = [], priv = [];
   const named = (a) => {

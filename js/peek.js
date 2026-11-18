@@ -1,9 +1,9 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=2.01";
-import { funOptions, qTitle, qIcon } from "./questions.js?v=2.01";
-import { PUZZLES } from "./puzzles.js?v=2.01";
-import { dotsHtml, miniGrid } from "./widgets.js?v=2.01";
+import { esc } from "./fb.js?v=2.1";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.1";
+import { PUZZLES } from "./puzzles.js?v=2.1";
+import { dotsHtml, miniGrid } from "./widgets.js?v=2.1";
 
 const PALETTE = ["#17795a", "#f08a24", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
@@ -225,21 +225,33 @@ P.fibo = (el, list, { myTeamId: me }) => {
 };
 
 P.pento = (el, list, { myTeamId: me, config, times }) => {
-  const idx = Number(config.pentoPuzzle) || 0;
-  const pz = PUZZLES[idx] || PUZZLES[0];
-  const rows = list.filter((a) => a.data.puzzle === idx && Array.isArray(a.data.grid)).sort(lblSort);
-  // 조각 놓은 모양이 같은지 비교 (돌리거나 뒤집은 같은 답은 다르게 셈)
-  const kinds = new Set(rows.map((a) => a.data.grid.join("/")));
-  let html = `${stats([[rows.length + "팀", "완성한 가족"], [kinds.size + "가지", "서로 다른 해법"]])}
-    <div class="peek-sub">${esc(pz.level)} · ${esc(pz.name)} — 같은 모양도 조각을 놓는 방법은 여러 가지예요!</div>
-    <div class="sol-gallery">${rows.map((a) => `<div class="s ${a.teamId === me ? "mine" : ""}">
-      <div style="display:flex;justify-content:center;margin-bottom:6px">${miniGrid(a.data.grid, 14)}</div>${esc(who(a, me))}</div>`).join("") || `<div class="empty">아직 완성한 가족이 없어요.</div>`}</div>`;
+  const { list: allowed, need } = pentoSettings(config);
+  const rows = [...list].map((a) => ({ ...a, sv: pentoSolved(a.data) })).sort(lblSort);
+  const cntOf = (a) => Object.keys(a.sv).filter((k) => allowed.includes(Number(k))).length;
+  const passed = rows.filter((a) => cntOf(a) >= need).length;
+  const per = Object.fromEntries(allowed.map((i) => [i, rows.filter((a) => a.sv[i])]));
+  const top = allowed.reduce((b, i) => (per[i].length > (per[b]?.length || 0) ? i : b), allowed[0]);
+  if (el._pz == null || !allowed.includes(el._pz)) el._pz = per[top]?.length ? top : allowed[0];
+
+  let html = `${stats([[passed + "팀", `${need}개 완성한 가족`], [fmt(avg(rows.map(cntOf))) + "개", "평균 완성 퍼즐"], [per[top]?.length ? esc(PUZZLES[top].name) : "-", "가장 많이 푼 퍼즐"]])}
+    <div class="chart"><h4>가족별 완성한 퍼즐 수</h4>${hbars(rows.map((a) => ({ name: who(a, me), v: cntOf(a), txt: `${cntOf(a)}개`, mine: a.teamId === me })), { max: Math.max(need, ...rows.map(cntOf)) })}</div>
+    <h4 style="margin:14px 2px 8px">퍼즐별로 보기 <span class="muted">— 퍼즐을 누르면 가족들의 해법이 나와요</span></h4>
+    <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))">${allowed.map((i) => `
+      <button type="button" class="s" data-pz="${i}" style="cursor:pointer;${i === el._pz ? "outline:3px solid #22305a" : ""}">
+        <div style="display:flex;justify-content:center;align-items:center;height:70px">${miniGrid(PUZZLES[i].rows, 7)}</div>
+        <div style="font-size:12px">${esc(PUZZLES[i].name)}</div><b style="color:#17795a">${per[i].length}팀</b></button>`).join("")}</div>`;
+  const sel = per[el._pz] || [];
+  const kinds = new Set(sel.map((a) => a.sv[el._pz].grid.join("/")));
+  html += `<div class="chart" style="margin-top:12px"><h4>${esc(PUZZLES[el._pz].level)} · ${esc(PUZZLES[el._pz].name)} — ${sel.length}팀 완성 · 서로 다른 해법 ${kinds.size}가지</h4>
+    <div class="sol-gallery">${sel.map((a) => `<div class="s ${a.teamId === me ? "mine" : ""}">
+      <div style="display:flex;justify-content:center;margin-bottom:6px">${miniGrid(a.sv[el._pz].grid, 14)}</div>${esc(who(a, me))}</div>`).join("") || `<div class="empty">아직 이 퍼즐을 완성한 가족이 없어요.</div>`}</div></div>`;
   if (config.pentoTimePublic && times && times.length) {
     const t = [...times].sort((a, b) => a.seconds - b.seconds);
-    html += `<div class="chart" style="margin-top:12px"><h4>⏱ 완성까지 걸린 시간</h4>
+    html += `<div class="chart" style="margin-top:12px"><h4>⏱ ${need}개 완성까지 걸린 시간</h4>
       ${hbars(t.map((x) => ({ name: who(x, me), v: x.seconds, txt: x.seconds < 60 ? `${x.seconds}초` : `${Math.floor(x.seconds / 60)}분 ${x.seconds % 60}초`, mine: x.teamId === me })), { color: "#3a7bd5" })}</div>`;
   }
   el.innerHTML = html;
+  el.querySelectorAll("[data-pz]").forEach((b) => b.onclick = () => { el._pz = Number(b.dataset.pz); P.pento(el, list, { myTeamId: me, config, times }); });
 };
 
 P.fun = (el, list, { myTeamId: me, config }) => {
@@ -304,7 +316,7 @@ P.photo = (el, list, { myTeamId: me }) => {
 export function renderPeek(el, q, list, ctx) {
   WIDE = !!ctx.wideNames;
   const fn = P[q.kind];
-  if (q.kind !== "scale" && !list.length) { el.innerHTML = `<div class="empty">아직 답을 낸 가족이 없어요.<br>조금 뒤에 다시 보러 와요! 👣</div>`; return; }
+  if (q.kind !== "scale" && !list.length) { el.innerHTML = `<div class="empty">아직 답을 낸 가족이 없어요.<br>조금 뒤에 다시 보러 와요!</div>`; return; }
   if (!fn) { el.innerHTML = `<div class="empty">팀별 발자취를 준비하지 못했어요.</div>`; return; }
   fn(el, list, { ...ctx, q });
   // 사진 크게 보기
