@@ -1,9 +1,9 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=2.31";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress } from "./questions.js?v=2.31";
-import { PUZZLES } from "./puzzles.js?v=2.31";
-import { dotsHtml, miniGrid } from "./widgets.js?v=2.31";
+import { esc } from "./fb.js?v=2.32";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress } from "./questions.js?v=2.32";
+import { PUZZLES } from "./puzzles.js?v=2.32";
+import { dotsHtml, miniGrid } from "./widgets.js?v=2.32";
 
 const PALETTE = ["#17795a", "#f08a24", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
@@ -226,7 +226,7 @@ P.fibo = (el, list, { myTeamId: me }) => {
 
 P.pento = (el, list, { myTeamId: me, config, times, admin }) => {
   const st = pentoSettings(config);
-  const { list: allowed, need, mode, groups } = st;
+  const { list: allowed, need, mode } = st;
   const rows = [...list].map((a) => ({ ...a, sv: pentoSolved(a.data) })).sort(lblSort);
   const cntOf = (a) => Object.keys(a.sv).filter((k) => allowed.includes(Number(k))).length; // 완성한 퍼즐 수
   const passed = rows.filter((a) => pentoProgress(a.sv, st).passed).length;
@@ -236,7 +236,7 @@ P.pento = (el, list, { myTeamId: me, config, times, admin }) => {
 
   let html = `${stats([[passed + "팀", "통과한 가족"], [fmt(avg(rows.map(cntOf))) + "개", "평균 완성 퍼즐"], [per[top]?.length ? esc(PUZZLES[top].name) : "-", "가장 많이 푼 퍼즐"]])}
     <div class="chart"><h4>가족별 완성한 퍼즐 수</h4>${hbars(rows.map((a) => ({ name: who(a, me), v: cntOf(a), txt: `${cntOf(a)}개${pentoProgress(a.sv, st).passed ? " ✔" : ""}`, mine: a.teamId === me })), { max: Math.max(need, ...rows.map(cntOf)) })}
-      ${mode === "group" ? `<div class="muted">✔ = ${groups.map((g) => `${g}조각`).join("·")} 퍼즐을 하나씩 완성해 통과한 가족</div>` : ""}</div>
+      ${mode === "group" ? `<div class="muted">✔ = 서로 다른 조각 수 퍼즐을 ${need}가지 완성해 통과한 가족</div>` : ""}</div>
     <h4 style="margin:14px 2px 8px">퍼즐별로 보기 <span class="muted">— 퍼즐을 누르면 ${admin ? "가족들의 해법이" : "해결한 가족이"} 나와요</span></h4>
     <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))">${allowed.map((i) => `
       <button type="button" class="s" data-pz="${i}" style="cursor:pointer;${i === el._pz ? "outline:3px solid #22305a" : ""}">

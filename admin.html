@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex">
   <title>AI수학투어 관리자</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛠️%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css?v=2.31">
+  <link rel="stylesheet" href="css/app.css?v=2.32">
 </head>
 <body class="admin">
   <header class="topbar">
@@ -154,10 +154,10 @@
           <h3 style="margin-top:0">🧩 펜토미노 퍼즐</h3>
           <label class="fld" style="margin-top:0">통과 방식</label>
           <div style="display:grid;gap:10px;margin-bottom:14px">
-            <label class="switch"><input type="radio" name="pzMode" value="group"> 조각 수별로 1개씩 — 같은 조각 수 퍼즐은 하나만 풀 수 있어요</label>
-            <div id="pzGroupBox" class="row wrap" style="gap:8px;margin-left:30px">
-              <span class="muted">꼭 해야 하는 묶음:</span>
-              <label class="switch"><input type="checkbox" class="pzG" value="2"> 2조각</label><label class="switch"><input type="checkbox" class="pzG" value="3"> 3조각</label><label class="switch"><input type="checkbox" class="pzG" value="4"> 4조각</label><label class="switch"><input type="checkbox" class="pzG" value="5"> 5조각</label><label class="switch"><input type="checkbox" class="pzG" value="6"> 6조각</label><label class="switch"><input type="checkbox" class="pzG" value="7"> 7조각</label><label class="switch"><input type="checkbox" class="pzG" value="8"> 8조각</label>
+            <label class="switch"><input type="radio" name="pzMode" value="group"> 서로 다른 조각 수 퍼즐을 정한 가짓수만큼 (퍼즐은 잠기지 않아요)</label>
+            <div id="pzGroupBox" class="row wrap" style="gap:10px;margin-left:30px">
+              <input id="pzGroupNeed" class="inp" inputmode="numeric" style="width:90px;text-align:center;font-weight:800">
+              <span class="muted">가지 (예: 3이면 2조각·3조각·5조각처럼 서로 다른 조각 수 퍼즐 3개)</span>
             </div>
             <label class="switch"><input type="radio" name="pzMode" value="count"> 아무 퍼즐이나 정한 개수만큼</label>
             <div id="pzCountBox" class="row wrap" style="gap:10px;margin-left:30px">
@@ -201,6 +201,6 @@
     </section>
     <div class="footer">만든 곳: 순천수학교육체험센터 · <span class="ver"></span></div>
   </main>
-  <script type="module" src="js/admin.js?v=2.31"></script>
+  <script type="module" src="js/admin.js?v=2.32"></script>
 </body>
 </html>

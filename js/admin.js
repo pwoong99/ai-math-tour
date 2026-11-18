@@ -4,12 +4,12 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.31";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.31";
-import { PUZZLES } from "./puzzles.js?v=2.31";
-import { miniGrid } from "./widgets.js?v=2.31";
-import { renderPeek } from "./peek.js?v=2.31";
-import { drawRoster, savePng } from "./cert.js?v=2.31";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.32";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.32";
+import { PUZZLES } from "./puzzles.js?v=2.32";
+import { miniGrid } from "./widgets.js?v=2.32";
+import { renderPeek } from "./peek.js?v=2.32";
+import { drawRoster, savePng } from "./cert.js?v=2.32";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -359,7 +359,7 @@ function renderQuestions(fillSettings) {
   A.pzSet = new Set(ps.list);
   $("pzNeed").value = Number(c.pentoNeed) || 3;
   document.querySelectorAll('input[name="pzMode"]').forEach((r) => r.checked = r.value === ps.mode);
-  document.querySelectorAll(".pzG").forEach((x) => x.checked = (c.pentoGroups || [2, 3, 4]).map(Number).includes(Number(x.value)));
+  $("pzGroupNeed").value = Number(c.pentoGroupNeed) || 3;
   pzModeUi();
   renderPz(); cipherCheck();
 }
@@ -427,14 +427,11 @@ $("sSave").onclick = async () => {
   const area = Number($("sArea").value);
   const need = Number($("pzNeed").value);
   const pzMode = document.querySelector('input[name="pzMode"]:checked')?.value || "group";
-  const pzGroups = [...document.querySelectorAll(".pzG:checked")].map((x) => Number(x.value));
+  const gNeed = Number($("pzGroupNeed").value);
+  const gAvail = new Set([...A.pzSet].map((i) => (PUZZLES[i].pieces || "").length)).size;
   if (!A.pzSet.size) return toast("가족이 고를 수 있는 펜토미노 퍼즐을 하나 이상 골라 주세요.");
   if (pzMode === "count" && (!Number.isInteger(need) || need < 1 || need > A.pzSet.size)) return toast(`통과에 필요한 퍼즐 수는 1부터 ${A.pzSet.size} 사이로 써 주세요.`);
-  if (pzMode === "group") {
-    if (!pzGroups.length) return toast("꼭 해야 하는 조각 수 묶음을 하나 이상 골라 주세요.");
-    const empty = pzGroups.filter((g) => ![...A.pzSet].some((i) => (PUZZLES[i].pieces || "").length === g));
-    if (empty.length) return toast(`${empty.map((g) => g + "조각").join(", ")} 퍼즐이 「고를 수 있는 퍼즐」에 하나도 없어요.`);
-  }
+  if (pzMode === "group" && (!Number.isInteger(gNeed) || gNeed < 1 || gNeed > gAvail)) return toast(`서로 다른 조각 수는 1부터 ${gAvail} 사이로 써 주세요. (지금 고른 퍼즐의 조각 수는 ${gAvail}가지예요)`);
   if (!(area > 0)) return toast("꽃밭 넓이를 숫자로 써 주세요.");
   const key = $("sKey").value.trim();
   if (key !== "?" && !/^\d{1,2}$/.test(key)) return toast("열쇠 k는 숫자(1~25) 또는 ?로 써 주세요.");
@@ -445,7 +442,7 @@ $("sSave").onclick = async () => {
       text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
       answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
     },
-    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroups: pzGroups.length ? pzGroups : [2, 3, 4], pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
+    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroupNeed: pzMode === "group" ? gNeed : (Number(A.config.pentoGroupNeed) || 3), pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
   });
   toast("설정을 저장했어요.");
 };

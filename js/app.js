@@ -3,11 +3,11 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.31";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.31";
-import { renderInput } from "./inputs.js?v=2.31";
-import { renderPeek } from "./peek.js?v=2.31";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.31";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.32";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.32";
+import { renderInput } from "./inputs.js?v=2.32";
+import { renderPeek } from "./peek.js?v=2.32";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.32";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
