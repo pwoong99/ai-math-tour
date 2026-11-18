@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=2.14";
-import { esc, toast } from "./fb.js?v=2.14";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=2.2";
+import { esc, toast } from "./fb.js?v=2.2";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -205,7 +205,9 @@ export function pentoBoard(el, rows, { initialGrid = null, onSolved = () => {}, 
     <div class="muted" style="margin-top:6px">조각을 골라 판 위로 끌어다 놓아요. 판에 놓은 조각을 톡 누르면 다시 빼낼 수 있어요.</div>`;
   const boardEl = el.querySelector(".pento-board"), pv = el.querySelector(".pv"), tray = el.querySelector(".tray");
   const width = Math.min(el.clientWidth || 340, 600);
-  const cs = Math.max(22, Math.min(46, Math.floor((width - 8) / Cc)));
+  // 칸 크기: 화면 너비와 높이에 맞춰요 (휴대폰에서 판·미리보기·조각 칸이 한 화면에 들어오게)
+  const byH = Math.floor((window.innerHeight - 330) / R);
+  const cs = Math.max(20, Math.min(46, Math.floor((width - 8) / Cc), byH > 0 ? byH : 46));
   boardEl.style.width = Cc * cs + "px";
   boardEl.style.height = R * cs + "px";
 

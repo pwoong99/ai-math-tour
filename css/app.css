@@ -367,3 +367,57 @@ table.t td.c, table.t th.c { text-align: center; }
 .sessbar .seg { width: 300px; }
 .sessbar .note { font-size: 14px; color: var(--sub); }
 .notice { background: var(--green-l); color: var(--green-d); border-radius: 14px; padding: 12px 16px; font-weight: 700; margin-bottom: 14px; }
+
+/* ───────── 스마트폰 맞춤 ───────── */
+/* 두 번 눌러 확대되는 것·누를 때 지연 막기 */
+button, .btn, .choice, .mitem, a, label { touch-action: manipulation; }
+/* 손가락으로 누르기 좋은 크기 */
+.btn.small { min-height: 42px; }
+.iconbtn { min-height: 40px; }
+/* 휴대폰 주소창 높이 변화에 맞춘 창 높이 */
+@supports (height: 100dvh) { .sheet { max-height: 92dvh; } }
+.sheet { overscroll-behavior: contain; }
+/* 만족도 버튼 안 글자 */
+.stars .face { font-style: normal; display: block; }
+.stars em { font-style: normal; display: block; font-weight: 700; }
+.stars b { display: block; }
+/* 펜토미노 퍼즐 카드 */
+.pz-cards { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)) !important; }
+.pz-cards .s { padding: 8px 4px; }
+/* 키보드가 올라왔을 때, 펜토미노 판을 펼쳤을 때는 아래 버튼 줄 숨기기 */
+body.kb-open .navbar, body.pento-focus .navbar { display: none; }
+body.pento-focus main { padding-bottom: 24px; }
+
+@media (max-width: 480px) {
+  main { padding: 12px 12px 92px; }
+  .card { padding: 16px 14px; }
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .topbar .brand { font-size: 16px; }
+  .topbar .brand small { display: none; }   /* 잘리던 부제목 숨기기 */
+  .hero { padding: 6px 4px 0; }
+  .hero h1 { font-size: 24px; margin: 8px 0 4px; }
+  .qhead { flex-wrap: wrap; gap: 6px 8px; }
+  .qhead h2 { font-size: 19px; }
+  .qdesc { font-size: 15px; }
+  .navbar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  /* 만족도: 휴대폰에서는 한 줄씩 목록으로 */
+  .stars { grid-template-columns: 1fr; gap: 8px; }
+  .stars button { display: flex; align-items: center; gap: 14px; padding: 10px 14px; text-align: left; }
+  .stars .face { font-size: 30px; }
+  .stars button span { display: flex; gap: 8px; align-items: baseline; margin: 0; font-size: 16px; }
+  .stars b, .stars em { display: inline; }
+  .stars b { color: var(--navy); }
+  /* 암호판 버튼 */
+  .wheel-ctl .btn { min-height: 44px; }
+  /* 팀별 발자취 창 */
+  .sheet { padding: 0 12px 28px; }
+  .stat b { font-size: 18px; }
+}
+@media (max-width: 360px) {
+  .hero h1 { font-size: 22px; }
+  .board5 .card-s { font-size: 11px; }
+  .navbar .btn { font-size: 15px; padding: 12px 8px; }
+}
+.navbar #btnNavList { flex: none; min-width: 52px; }
+.navbar #btnPrev { flex: none; }
+#qInput [data-back] { scroll-margin-top: 70px; }   /* 펜토미노 판을 열면 머리말에 가리지 않게 */

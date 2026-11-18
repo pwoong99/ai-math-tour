@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.14";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.14";
-import { PUZZLES } from "./puzzles.js?v=2.14";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.14";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.2";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.2";
+import { PUZZLES } from "./puzzles.js?v=2.2";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.2";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -11,7 +11,7 @@ const fail = (msg) => ({ ok: false, msg });
 
 function numField(id, label, unit, val, { int = false, ph = "" } = {}) {
   return `<label class="fld" for="${id}">${label}</label>
-    <div class="unit-wrap"><input id="${id}" class="inp" inputmode="${int ? "numeric" : "decimal"}" autocomplete="off"
+    <div class="unit-wrap"><input id="${id}" class="inp" inputmode="${int ? "numeric" : "decimal"}" enterkeyhint="done" autocomplete="off"
       placeholder="${esc(ph)}" value="${val ?? ""}">${unit ? `<span class="unit">${esc(unit)}</span>` : ""}</div>`;
 }
 function numCheck(v, label, unit, int) {
@@ -320,8 +320,9 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
 
   // 퍼즐 고르기 화면
   const showList = () => {
+    document.body.classList.remove("pento-focus");
     el.innerHTML = head() + `
-      <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(100px,1fr))">${list.map((i) => {
+      <div class="sol-gallery pz-cards">${list.map((i) => {
         const pz = PUZZLES[i], done = solved[i];
         return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #17795a;background:#eefaf3" : "border:2px solid transparent"}">
           <div style="display:flex;justify-content:center;align-items:center;height:84px">${miniGrid(done ? done.grid : pz.rows, 9)}</div>
@@ -355,6 +356,9 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
       <button type="button" class="btn gray small" style="margin-top:8px" data-reset>처음부터 다시</button>`;
     el.querySelector("[data-back]").onclick = showList;
     tickOn();
+    // 휴대폰: 아래 버튼 줄을 숨기고 퍼즐 판이 화면 위쪽에 오게
+    document.body.classList.add("pento-focus");
+    setTimeout(() => el.querySelector("[data-back]")?.scrollIntoView({ block: "start", behavior: "smooth" }), 50);
     const board = pentoBoard(el.querySelector(".pb"), pz.rows, {
       onSolved: async (grid) => {
         const before = count();
@@ -420,7 +424,7 @@ R.scale = (el, q, { teamId }) => {
   const key = `mt_scale_${teamId}_${q.id}`;
   let v = Number(localStorage.getItem(key)) || 0;
   el.innerHTML = `<div class="stars">${FACES.map((f, i) =>
-    `<button type="button" data-v="${i + 1}" class="${v === i + 1 ? "on" : ""}">${f[0]}<span>${i + 1}점<br>${f[1]}</span></button>`).join("")}</div>
+    `<button type="button" data-v="${i + 1}" class="${v === i + 1 ? "on" : ""}"><i class="face">${f[0]}</i><span><b>${i + 1}점</b> <em>${f[1]}</em></span></button>`).join("")}</div>
     <div class="muted" style="margin-top:10px">🔒 이 답은 다른 가족에게 보이지 않고 선생님만 볼 수 있어요.</div>`;
   el.querySelectorAll(".stars button").forEach((b) => b.onclick = () => {
     v = Number(b.dataset.v);

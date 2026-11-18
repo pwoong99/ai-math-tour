@@ -3,11 +3,11 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.14";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.14";
-import { renderInput } from "./inputs.js?v=2.14";
-import { renderPeek } from "./peek.js?v=2.14";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.14";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.2";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.2";
+import { renderInput } from "./inputs.js?v=2.2";
+import { renderPeek } from "./peek.js?v=2.2";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.2";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -19,6 +19,8 @@ const S = {
 /* ── 화면 바꾸기 ── */
 function show(v) {
   S.view = v;
+  document.body.classList.remove("pento-focus");
+  if (history.state?.mt === "base" && v !== "login" && v !== "loading") history.pushState({ mt: "app" }, ""); // 뒤로 가기 대비
   ["loading", "login", "mission", "list", "done"].forEach((n) => $("v-" + n).classList.toggle("hidden", n !== v));
   $("navbar").classList.toggle("hidden", v !== "mission");
   const inside = !!S.me && v !== "login";
@@ -283,6 +285,7 @@ function openPeek(q) {
     <div class="peek-sub">${SESSIONS[S.me.session]} 팀별 발자취예요. 실시간으로 바뀌어요!</div><div class="pk"><div class="loading"><div class="spin"></div></div></div></div>`;
   document.body.appendChild(bg);
   document.body.style.overflow = "hidden";
+  history.pushState({ mt: "sheet" }, "");   // 휴대폰 뒤로 가기 → 창만 닫기
   bg.querySelector(".x").onclick = closePeek;
   bg.addEventListener("click", (e) => { if (e.target === bg) closePeek(); });
   const box = bg.querySelector(".pk");
@@ -301,11 +304,35 @@ function openPeek(q) {
     ));
   }
 }
-function closePeek() {
+function closePeek(fromBack = false) {
   S.peekUnsub.forEach((u) => u()); S.peekUnsub = [];
-  document.querySelector(".sheet-bg")?.remove();
+  const open = document.querySelector(".sheet-bg");
+  open?.remove();
   document.body.style.overflow = "";
+  if (open && !fromBack && history.state?.mt === "sheet") history.back();
 }
+
+/* ── 휴대폰에 맞춘 동작 ── */
+// 뒤로 가기: 크게 보기 사진 → 팀별 발자취 창 → 미션에서 목록으로. 앱 밖으로 바로 나가지 않게 해요.
+history.replaceState({ mt: "base" }, "");
+history.pushState({ mt: "app" }, "");
+window.addEventListener("popstate", () => {
+  const zoom = document.querySelector(".zoom");
+  if (zoom) { zoom.remove(); history.pushState({ mt: "sheet" }, ""); return; }
+  if (document.querySelector(".sheet-bg")) { closePeek(true); return; }
+  if (S.me && (S.view === "mission" || S.view === "done")) { showList(); return; }
+  // 목록·로그인 화면에서는 한 번 더 누르면 앱에서 나가요
+  toast("한 번 더 누르면 앱에서 나가요");
+});
+// 키보드가 올라오면 아래 버튼 줄을 숨겨 입력 칸을 가리지 않게
+document.addEventListener("focusin", (e) => {
+  if (e.target.matches("input:not([type=checkbox]):not([type=file]):not([type=range]), textarea, select")) document.body.classList.add("kb-open");
+});
+document.addEventListener("focusout", () => setTimeout(() => {
+  if (!document.activeElement?.matches?.("input, textarea, select")) document.body.classList.remove("kb-open");
+}, 120));
+// 로그인: 이름 칸에서 「다음」 → 비밀번호 칸으로
+$("inpName").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("inpPw").focus(); } });
 
 /* ── 완주 · 수료증 ── */
 let certCanvas = null, certTimer = null;

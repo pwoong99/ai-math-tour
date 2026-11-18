@@ -6,7 +6,13 @@
   <meta name="theme-color" content="#17795a">
   <title>가족과 함께하는 AI수학투어</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧭%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/app.css?v=2.14">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AI수학투어">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="stylesheet" href="css/app.css?v=2.2">
 </head>
 <body>
   <header class="topbar">
@@ -35,9 +41,9 @@
         <label class="fld" for="selSchool">학생 소속 학교</label>
         <select id="selSchool" class="inp"><option value="">먼저 오전/오후를 골라 주세요</option></select>
         <label class="fld" for="inpName">학생 이름</label>
-        <input id="inpName" class="inp" autocomplete="off" placeholder="예) 김순천">
+        <input id="inpName" class="inp" autocomplete="off" enterkeyhint="next" placeholder="예) 김순천">
         <label class="fld" for="inpPw">비밀번호 <small>(선생님께 받은 숫자 4자리)</small></label>
-        <input id="inpPw" class="inp pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+        <input id="inpPw" class="inp pin" inputmode="numeric" pattern="[0-9]*" enterkeyhint="go" maxlength="4" autocomplete="off" placeholder="••••">
         <div id="loginErr" class="err"></div>
         <button id="btnLogin" class="btn block" type="button" style="margin-top:16px">미션 시작하기 🚀</button>
       </div>
@@ -97,6 +103,6 @@
     </div>
   </nav>
 
-  <script type="module" src="js/app.js?v=2.14"></script>
+  <script type="module" src="js/app.js?v=2.2"></script>
 </body>
 </html>
