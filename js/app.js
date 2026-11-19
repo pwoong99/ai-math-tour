@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.01";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.01";
-import { renderInput } from "./inputs.js?v=3.01";
-import { renderPeek } from "./peek.js?v=3.01";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.01";
-import { drawDataMap, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.01";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.02";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.02";
+import { renderInput } from "./inputs.js?v=3.02";
+import { renderPeek } from "./peek.js?v=3.02";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.02";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.02";
 import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -390,16 +390,18 @@ async function makeDataMap() {
     who: { school: S.me.school, name: S.me.name, date: `${y}. ${mo}. ${d}.` },
     sessName: SESSIONS[S.me.session], m, all
   });
-  $("dmTabs").innerHTML = SCENE_NAMES.map((s, i) => `<button type="button" data-i="${i}"><small>${i + 1}</small>${s}</button>`).join("");
+  dmCanvases.push(drawOverview(dmCanvases, { school: S.me.school, name: S.me.name, date: `${y}. ${mo}. ${d}.` }));
+  $("dmTabs").innerHTML = [...SCENE_NAMES, "한눈에"].map((s, i) => `<button type="button" data-i="${i}"><small>${i < 5 ? i + 1 : "5장"}</small>${s}</button>`).join("");
   $("dmTabs").querySelectorAll("button").forEach((b) => b.onclick = () => showScene(Number(b.dataset.i)));
   showScene(dmIdx);
 }
 function showScene(i) {
   dmIdx = i;
   $("dmTabs").querySelectorAll("button").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === i));
-  $("dmBox").innerHTML = `<img class="cert-img" src="${dmCanvases[i].toDataURL("image/png")}" alt="데이터 맵 ${i + 1}장면">`;
+  $("dmBox").innerHTML = `<img class="cert-img" src="${dmCanvases[i].toDataURL("image/png")}" alt="${i < 5 ? `데이터 맵 ${i + 1}장면` : "데이터 맵 5장면 한눈에 보기"}">`;
+  $("btnDmSave").textContent = i < 5 ? "📥 이 장면 저장" : "📥 한 장으로 저장";
 }
-const dmName = (i) => `AI투어_데이터맵_${i + 1}_${SCENE_NAMES[i]}_${S.me.name}.png`;
+const dmName = (i) => i < 5 ? `AI투어_데이터맵_${i + 1}_${SCENE_NAMES[i]}_${S.me.name}.png` : `AI투어_데이터맵_한눈에_${S.me.name}.png`;
 async function downloadCanvas(cv, name) {
   const blob = await canvasToPng(cv);
   const url = URL.createObjectURL(blob);
@@ -411,18 +413,19 @@ async function downloadCanvas(cv, name) {
 $("btnDmSave").onclick = async () => {
   if (!dmCanvases[dmIdx]) return;
   await downloadCanvas(dmCanvases[dmIdx], dmName(dmIdx));
-  toast(`${dmIdx + 1}번째 장면 「${SCENE_NAMES[dmIdx]}」을 저장했어요!`);
+  toast(dmIdx < 5 ? `${dmIdx + 1}번째 장면 「${SCENE_NAMES[dmIdx]}」을 저장했어요!` : "5장면을 한 장으로 모은 사진을 저장했어요!");
 };
 $("btnDmAll").onclick = async () => {
   if (dmCanvases.length < 5) return;
+  const five = dmCanvases.slice(0, 5);
   // 휴대폰: 공유 창으로 5장을 한 번에 (「이미지 저장」을 고르면 사진첩에 들어가요)
   if (navigator.canShare) {
     try {
-      const files = await Promise.all(dmCanvases.map(async (cv, i) => new File([await canvasToPng(cv)], dmName(i), { type: "image/png" })));
+      const files = await Promise.all(five.map(async (cv, i) => new File([await canvasToPng(cv)], dmName(i), { type: "image/png" })));
       if (navigator.canShare({ files })) { await navigator.share({ files, title: "우리가족 AI투어 데이터 맵" }); return; }
     } catch (e) { if (e?.name === "AbortError") return; }
   }
-  for (let i = 0; i < dmCanvases.length; i++) { await downloadCanvas(dmCanvases[i], dmName(i)); await new Promise((r) => setTimeout(r, 450)); }
+  for (let i = 0; i < five.length; i++) { await downloadCanvas(five[i], dmName(i)); await new Promise((r) => setTimeout(r, 450)); }
   toast("5장을 모두 저장했어요! 사진첩이나 다운로드 폴더를 확인해 주세요.");
 };
 async function makeCert() {

@@ -4,13 +4,13 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.01";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.01";
-import { STAR_ITEMS, starValues } from "./datamap.js?v=3.01";
-import { PUZZLES } from "./puzzles.js?v=3.01";
-import { miniGrid } from "./widgets.js?v=3.01";
-import { renderPeek } from "./peek.js?v=3.01";
-import { drawRoster, savePng } from "./cert.js?v=3.01";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.02";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.02";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=3.02";
+import { PUZZLES } from "./puzzles.js?v=3.02";
+import { miniGrid } from "./widgets.js?v=3.02";
+import { renderPeek } from "./peek.js?v=3.02";
+import { drawRoster, savePng } from "./cert.js?v=3.02";
 
 const $ = (id) => document.getElementById(id);
 const A = {

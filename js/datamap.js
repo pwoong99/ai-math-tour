@@ -1,5 +1,5 @@
 // 우리가족 'AI투어 데이터 맵' — ★ 숫자 12개로 만드는 5장면 사진 (숫자 → 정리 → 그림 → 규칙 → 리포트)
-import { PLACES, FIBS, pentoSolved } from "./questions.js?v=3.01";
+import { PLACES, FIBS, pentoSolved } from "./questions.js?v=3.02";
 
 const FONT = `"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
 const W = 1080, H = 1350;
@@ -250,3 +250,34 @@ export async function drawDataMap({ who, sessName, m, all }) {
   });
 }
 export const SCENE_NAMES = SCENES;
+
+// 5장면을 한 장에 모아 보기 (2칸 × 3줄, 마지막 칸은 제목 카드)
+export function drawOverview(canvases, who) {
+  const cw = 540, ch = 675, gap = 24, pad = 30, top = 150;
+  const cv = document.createElement("canvas");
+  cv.width = pad * 2 + cw * 2 + gap; cv.height = top + (ch + gap) * 3 - gap + pad + 70;
+  const c = cv.getContext("2d");
+  c.fillStyle = CREAM; c.fillRect(0, 0, cv.width, cv.height);
+  c.strokeStyle = "#e2e8f3"; c.lineWidth = 2;
+  for (let x = 0; x <= cv.width; x += 40) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, cv.height); c.stroke(); }
+  for (let y = 0; y <= cv.height; y += 40) { c.beginPath(); c.moveTo(0, y); c.lineTo(cv.width, y); c.stroke(); }
+  c.fillStyle = GREEN; c.fillRect(0, 0, cv.width, 120);
+  txt(c, "우리가족 ‘AI투어 데이터 맵’ 한눈에 보기", pad + 6, 76, { size: 42, weight: 900, color: "#fff", max: cv.width - 2 * pad });
+  canvases.slice(0, 5).forEach((s, i) => {
+    const x = pad + (i % 2) * (cw + gap), y = top + Math.floor(i / 2) * (ch + gap);
+    c.fillStyle = GREEN; rr(c, x + 7, y + 7, cw, ch, 14); c.fill();
+    c.save(); rr(c, x, y, cw, ch, 14); c.clip(); c.drawImage(s, x, y, cw, ch); c.restore();
+    c.strokeStyle = GREEN; c.lineWidth = 3; rr(c, x, y, cw, ch, 14); c.stroke();
+  });
+  // 6번째 칸: 제목 카드
+  const x = pad + cw + gap, y = top + 2 * (ch + gap);
+  c.fillStyle = GREEN; rr(c, x, y, cw, ch, 14); c.fill();
+  txt(c, "숫자 → 정리 → 그림", x + cw / 2, y + 190, { size: 40, weight: 900, color: YELLOW, align: "center" });
+  txt(c, "→ 규칙 → 리포트", x + cw / 2, y + 245, { size: 40, weight: 900, color: YELLOW, align: "center" });
+  txt(c, who.school, x + cw / 2, y + 360, { size: 34, weight: 800, color: "#fff", align: "center", max: cw - 60 });
+  txt(c, `${who.name} 가족`, x + cw / 2, y + 412, { size: 40, weight: 900, color: "#fff", align: "center", max: cw - 60 });
+  txt(c, who.date, x + cw / 2, y + 470, { size: 28, weight: 700, color: "#dfe5f5", align: "center" });
+  txt(c, "순천수학교육체험센터", x + cw / 2, y + ch - 50, { size: 28, weight: 800, color: YELLOW, align: "center" });
+  txt(c, "2026. 가족과 함께하는 AI수학투어", cv.width / 2, cv.height - 32, { size: 26, weight: 700, color: SUB, align: "center" });
+  return cv;
+}

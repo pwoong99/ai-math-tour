@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=3.01";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.01";
-import { PUZZLES } from "./puzzles.js?v=3.01";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.01";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.02";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.02";
+import { PUZZLES } from "./puzzles.js?v=3.02";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.02";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
