@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=2.42";
-import { esc, toast } from "./fb.js?v=2.42";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=3.0";
+import { esc, toast } from "./fb.js?v=3.0";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -17,27 +17,27 @@ export function cipherWheel(el, startK = 0) {
   let outer = "", inner = "";
   for (let i = 0; i < 26; i++) {
     const [x, y] = pos(132, i);
-    outer += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#22305a">${ABC[i]}</text>`;
+    outer += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#1f2a5c">${ABC[i]}</text>`;
     const [x2, y2] = pos(96, i);
-    inner += `<text x="${x2}" y="${y2}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="800" fill="${i === 0 ? "#d64545" : "#0f5c44"}">${ABC[i]}</text>`;
+    inner += `<text x="${x2}" y="${y2}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="800" fill="${i === 0 ? "#d64545" : "#141b3d"}">${ABC[i]}</text>`;
     const [lx1, ly1] = pos(116, i + 0.5), [lx2, ly2] = pos(150, i + 0.5);
     outer += `<line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="#c9cfe0" stroke-width="1"/>`;
   }
   el.innerHTML = `
     <div class="wheel-wrap">
       <svg viewBox="0 0 ${S} ${S}">
-        <circle cx="${cx}" cy="${cy}" r="152" fill="#eef1fb" stroke="#22305a" stroke-width="3"/>
-        <circle cx="${cx}" cy="${cy}" r="116" fill="#fff" stroke="#22305a" stroke-width="2"/>
+        <circle cx="${cx}" cy="${cy}" r="152" fill="#eef1fb" stroke="#1f2a5c" stroke-width="3"/>
+        <circle cx="${cx}" cy="${cy}" r="116" fill="#fff" stroke="#1f2a5c" stroke-width="2"/>
         ${outer}
         <g class="inner" style="transform-origin:${cx}px ${cy}px;transition:transform .25s">
-          <circle cx="${cx}" cy="${cy}" r="114" fill="#e3f3ec" stroke="#17795a" stroke-width="2"/>
+          <circle cx="${cx}" cy="${cy}" r="114" fill="#eef1fb" stroke="#1f2a5c" stroke-width="2"/>
           ${inner}
-          <circle cx="${cx}" cy="${cy}" r="70" fill="#fff" stroke="#17795a" stroke-width="2"/>
+          <circle cx="${cx}" cy="${cy}" r="70" fill="#fff" stroke="#1f2a5c" stroke-width="2"/>
         </g>
-        <path d="M${cx} 4 l-9 -0 l9 14 l9 -14z" fill="#f08a24"/>
+        <path d="M${cx} 4 l-9 -0 l9 14 l9 -14z" fill="#e5484d"/>
         <text x="${cx}" y="${cy - 14}" text-anchor="middle" font-size="13" font-weight="700" fill="#5d6b69">바깥 = 암호</text>
-        <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" font-weight="700" fill="#17795a">안쪽 = 원래 글자</text>
-        <text class="kt" x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#22305a"></text>
+        <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2a5c">안쪽 = 원래 글자</text>
+        <text class="kt" x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="16" font-weight="900" fill="#1f2a5c"></text>
       </svg>
       <div class="wheel-ctl">
         <button type="button" class="btn small gray" data-d="-1">◀ 한 칸</button>
@@ -370,12 +370,12 @@ export function eulerFigSvg(fig, { path = [], edges = [], cur = null, small = fa
     const start = path[0] === id, now = cur === id;
     return `<g data-v="${id}" style="cursor:pointer">
       <circle cx="${x}" cy="${y}" r="22" fill="transparent"/>
-      ${now ? `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#f08a24" stroke-width="4"/>` : ""}
-      <circle cx="${x}" cy="${y}" r="${small ? 8 : 10}" fill="${start ? "#17795a" : "#e53935"}" stroke="#fff" stroke-width="2"/></g>`;
+      ${now ? `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#e5484d" stroke-width="4"/>` : ""}
+      <circle cx="${x}" cy="${y}" r="${small ? 8 : 10}" fill="${start ? "#1f2a5c" : "#e53935"}" stroke="#fff" stroke-width="2"/></g>`;
   }).join("");
   if (path.length) {
     const [x, y] = f.V[path[0]];
-    g += `<text x="${x}" y="${y + (y > H / 2 ? 26 : -18)}" text-anchor="middle" font-size="${small ? 16 : 13}" font-weight="900" fill="#17795a">출발</text>`;
+    g += `<text x="${x}" y="${y + (y > H / 2 ? 26 : -18)}" text-anchor="middle" font-size="${small ? 16 : 13}" font-weight="900" fill="#1f2a5c">출발</text>`;
   }
   return `<svg viewBox="-10 -10 ${W + 20} ${H + 20}" style="width:100%;max-width:${small ? 160 : 320}px;display:block;margin:0 auto;touch-action:manipulation">${g}</svg>`;
 }

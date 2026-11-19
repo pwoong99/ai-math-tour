@@ -1,5 +1,5 @@
 // 사진(PNG)으로 저장하는 그림: 수료증, 관리자용 로그인 명단
-import { CENTER, EVENT_TITLE } from "./fb.js?v=2.42";
+import { CENTER, EVENT_TITLE } from "./fb.js?v=3.0";
 
 const FONT = `"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
 
@@ -26,7 +26,7 @@ export async function drawCertificate({ school, name, guardian = "", y, m, d }) 
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
-  const green = "#17795a", gold = "#c9a227", ink = "#1d2b2a";
+  const green = "#1f2a5c", gold = "#c9a227", ink = "#1d2b2a";
 
   // 바탕
   const bg = c.createLinearGradient(0, 0, 0, H);
@@ -114,7 +114,7 @@ export async function drawRoster(title, teams) {
   cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
   c.fillStyle = "#fff"; c.fillRect(0, 0, W, H);
-  c.fillStyle = "#17795a"; c.fillRect(0, 0, W, 130);
+  c.fillStyle = "#1f2a5c"; c.fillRect(0, 0, W, 130);
   c.fillStyle = "#fff"; c.textAlign = "left";
   c.font = `900 46px ${FONT}`; c.fillText(title, 60, 82);
   c.font = `600 24px ${FONT}`; c.fillText(EVENT_TITLE, 60, 116);

@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.42";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=2.42";
-import { PUZZLES } from "./puzzles.js?v=2.42";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=2.42";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.0";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.0";
+import { PUZZLES } from "./puzzles.js?v=3.0";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.0";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -628,7 +628,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
     const gs = [...new Set(list.map(pzGroup))];
     const chips = mode === "group" ? `<div class="tchips" style="margin-top:6px">${gs.map((g) => {
       const ok = p.doneGroups.includes(g);
-      return `<span class="tchip" style="${ok ? "background:#17795a;color:#fff" : ""}">${ok ? "✔ " : ""}${g}조각</span>`;
+      return `<span class="tchip" style="${ok ? "background:#1f2a5c;color:#fff" : ""}">${ok ? "✔ " : ""}${g}조각</span>`;
     }).join("")}</div>` : "";
     return `
     <div class="row" style="justify-content:space-between;margin-bottom:8px;align-items:flex-start">
@@ -636,8 +636,8 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
         <div class="muted">${rule}</div>${chips}</div>
       ${config.pentoTimerShow === false ? "" : `<div class="timer">⏱ <span class="tt">${fmt(elapsed())}</span></div>`}</div>
     <div style="height:10px;background:#e6e1d4;border-radius:99px;overflow:hidden;margin:6px 0 4px">
-      <i style="display:block;height:100%;width:${Math.min(100, doneN / all * 100)}%;background:#f08a24;border-radius:99px"></i></div>
-    <div class="muted" style="margin-bottom:10px"><b style="color:#b35c0c">전체 ${all}개 중 ${doneN}개 도전 완료</b> · 기왕이면 모든 퍼즐에 도전해 보세요!</div>`;
+      <i style="display:block;height:100%;width:${Math.min(100, doneN / all * 100)}%;background:#e5484d;border-radius:99px"></i></div>
+    <div class="muted" style="margin-bottom:10px"><b style="color:#b8282d">전체 ${all}개 중 ${doneN}개 도전 완료</b> · 기왕이면 모든 퍼즐에 도전해 보세요!</div>`;
   };
   const tickOn = () => {
     clearInterval(timerId);
@@ -650,16 +650,16 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
   // 퍼즐 고르기 화면 (조각 수별로 묶어서)
   const card = (i) => {
     const pz = PUZZLES[i], done = solved[i], lock = false;
-    return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #17795a;background:#eefaf3" : "border:2px solid transparent"}${lock ? ";opacity:.4" : ""}">
+    return `<button type="button" class="s" data-pz="${i}" style="cursor:pointer;${done ? "border:2px solid #1f2a5c;background:#fff6c9" : "border:2px solid transparent"}${lock ? ";opacity:.4" : ""}">
       <div style="display:flex;justify-content:center;align-items:center;height:84px">${miniGrid(done ? done.grid : pz.rows, 9)}</div>
-      <div style="font-size:12px;color:#5d6b69">${esc(pz.level)}</div>${esc(pz.name)}${done ? `<div style="color:#17795a;font-size:12px">✔ 완성</div>` : lock ? `<div style="font-size:12px;color:#5d6b69">🔒 잠김</div>` : ""}</button>`;
+      <div style="font-size:12px;color:#5d6b69">${esc(pz.level)}</div>${esc(pz.name)}${done ? `<div style="color:#1f2a5c;font-size:12px">✔ 완성</div>` : lock ? `<div style="font-size:12px;color:#5d6b69">🔒 잠김</div>` : ""}</button>`;
   };
   const showList = () => {
     document.body.classList.remove("pento-focus");
     const gs = [...new Set(list.map(pzGroup))];
     el.innerHTML = head() + gs.map((g) => {
       const n = list.filter((i) => pzGroup(i) === g), d = n.filter((i) => solved[i]).length;
-      const tag = `<span class="tchip" style="${d ? "background:#e3f3ec;color:#0f5c44" : ""}">${d} / ${n.length}</span>`;
+      const tag = `<span class="tchip" style="${d ? "background:#eef1fb;color:#141b3d" : ""}">${d} / ${n.length}</span>`;
       return `<h4 style="margin:14px 2px 8px;display:flex;gap:6px;align-items:center">${g}조각 퍼즐 ${tag}</h4>
         <div class="sol-gallery pz-cards">${list.filter((i) => pzGroup(i) === g).map(card).join("")}</div>`;
     }).join("") + `<div class="muted" style="margin-top:10px">풀고 싶은 퍼즐을 골라요. 실물 조각으로 먼저 맞춘 뒤, 판에도 똑같이 놓아 보세요.</div>`;
@@ -671,7 +671,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
   const openPuzzle = (i, again = false) => {
     const pz = PUZZLES[i];
     if (solved[i] && !again) {
-      el.innerHTML = head() + `<div class="card" style="text-align:center;background:#e3f3ec">
+      el.innerHTML = head() + `<div class="card" style="text-align:center;background:#eef1fb">
           <b>${esc(pz.level)} · ${esc(pz.name)} 완성!</b>
           <div style="margin:10px auto;display:flex;justify-content:center">${miniGrid(solved[i].grid, 26)}</div>
           <div class="row" style="justify-content:center">

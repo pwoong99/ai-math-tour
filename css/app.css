@@ -1,4 +1,5 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
 
 :root {
   --bg: #f6f3ea;
@@ -542,3 +543,136 @@ h4.sec small { font-weight: 600; color: var(--sub); font-size: 13px; }
 .dm-tabs button { font-size: 14px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; min-height: 48px; justify-content: center; }
 .dm-tabs button small { font-size: 11px; opacity: .75; }
 .dm-box img { border-radius: 14px; box-shadow: var(--shadow); }
+
+
+/* ═══════════════ v3.0 디자인: 모눈 노트 (수학 시안) ═══════════════ */
+:root {
+  --bg: #fbfaf5;
+  --ink: #1f2a5c;
+  --sub: #4d5a80;
+  --line: #c9d2e6;
+  --green: #1f2a5c;
+  --green-d: #141b3d;
+  --green-l: #eef1fb;
+  --orange: #e5484d;
+  --orange-l: #fff1f1;
+  --navy: #1f2a5c;
+  --red: #d63a3f;
+  --yellow: #ffd84d;
+  --grid: #e2e8f3;
+  --mono: "Space Mono", ui-monospace, monospace;
+  --radius: 16px;
+  --shadow: 5px 5px 0 var(--navy);
+}
+body {
+  font-family: "IBM Plex Sans KR", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-attachment: fixed;
+}
+/* 머리말 */
+.topbar { background: var(--navy); box-shadow: 0 2px 0 var(--navy); }
+.topbar .brand small { color: var(--yellow); opacity: .9; }
+.chip { background: transparent; border: 1.5px solid var(--yellow); color: var(--yellow); }
+.iconbtn { background: rgba(255, 255, 255, .12); border: 1.5px solid rgba(255, 255, 255, .35); }
+/* 카드: 공책 종이 + 남색 테두리 + 비껴 찍힌 그림자 */
+.card { border: 2px solid var(--navy); box-shadow: var(--shadow); }
+main > section > .card:first-of-type { position: relative; }
+/* 버튼 */
+.btn { background: var(--navy); color: var(--yellow); border-radius: 12px; }
+.btn.orange { background: var(--orange); color: #fff; }
+.btn.ghost { background: #fff; color: var(--navy); border: 2px solid var(--navy); }
+.btn.gray { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+.btn.red { background: var(--red); color: #fff; }
+.navbar { background: rgba(251, 250, 245, .97); border-top: 2px solid var(--navy); }
+.navbar .btn.gray:disabled { color: #9aa4c0; }
+/* 입력 */
+.inp, select.inp, textarea.inp { border-color: var(--line); border-radius: 12px; }
+.inp:focus { border-color: var(--navy); box-shadow: 0 0 0 3px #ffefa6; }
+.pin { font-family: var(--mono); letter-spacing: 14px; }
+.inp.mini { font-family: var(--mono); border: 2px solid var(--navy); }
+.choice { border-color: var(--line); border-radius: 12px; }
+.choice.on { border-color: var(--navy); background: var(--navy); color: var(--yellow); }
+/* 로그인 */
+.hero { position: relative; padding-top: 26px; padding-bottom: 12px; }
+.hero h1 { color: var(--navy); }
+.hero h1 .hl { background: linear-gradient(transparent 58%, var(--yellow) 58%); padding: 0 4px; }
+.hero .deco { position: absolute; font-family: var(--mono); pointer-events: none; user-select: none; }
+.hero .d1 { left: 4px; top: 6px; font-size: 32px; color: #b9c6e4; transform: rotate(-12deg); }
+.hero .d2 { right: 8px; top: 16px; font-size: 26px; color: #f3b8b9; transform: rotate(10deg); }
+.hero .d3 { left: 30px; top: 74px; font-size: 22px; color: #a8dccf; }
+.hero .d4 { right: 30px; top: 70px; font-size: 24px; color: #f2d27a; transform: rotate(-8deg); }
+.seg { gap: 0; border: 2px solid var(--navy); border-radius: 12px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: #fff; color: var(--navy); }
+.seg button.on { background: var(--navy); color: var(--yellow); }
+/* 진행 막대 → 수직선 느낌 */
+.progress .bar { height: 10px; background: #fff; border: 2px solid var(--navy); border-radius: 6px;
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / 14 - 1px), #c9d2e6 calc(100% / 14 - 1px) calc(100% / 14)); }
+.progress .bar i { background: var(--orange); border-radius: 0; }
+.progress b { color: var(--navy); }
+/* 문제 카드 */
+.qnum { background: var(--navy); color: var(--yellow); border-radius: 8px; }
+.qhead h2 { color: var(--navy); }
+.qdesc { background: #fff; border: 1.5px dashed var(--navy); border-radius: 12px; color: var(--ink); position: relative; padding-left: 22px; }
+.qdesc::before { content: ""; position: absolute; left: 10px; top: 8px; bottom: 8px; width: 2px; background: #f3a5a7; }
+.solved-tag { background: #fff6c9; color: var(--navy); border: 1.5px solid var(--navy); }
+.q-place { border: 1.5px solid var(--navy); }
+h4.sec { background: transparent; color: var(--navy); border-radius: 0; padding: 4px 2px 4px 10px; border-left: 5px solid var(--yellow); border-bottom: 1.5px dashed var(--line); }
+h4.sec small { color: var(--sub); }
+.calc { background: #f4f6fc; border: 1px solid #dfe5f1; }
+.family-tip { background: #fffbe6; border-left-color: var(--yellow); color: var(--ink); }
+.peekbtn { border-color: var(--navy); background: #fff; color: var(--navy); box-shadow: 4px 4px 0 var(--yellow); }
+.step::before { background: var(--navy); color: var(--yellow); font-family: var(--mono); }
+.star { color: #e0a800; }
+/* 미션 목록: 공책 줄 */
+.mlist { gap: 8px; }
+.mitem { box-shadow: none; border: 2px solid var(--navy); border-radius: 12px; position: relative; padding-left: 16px; }
+.mitem::before { content: ""; position: absolute; left: 62px; top: 0; bottom: 0; width: 1.5px; background: #f3a5a7; }
+.mitem .ic { width: 36px; }
+.mitem .t { padding-left: 8px; }
+.mitem .code { background: #eef1fb; color: var(--navy); }
+.mitem.current { background: #fff6c9; border-color: var(--navy); box-shadow: 4px 4px 0 var(--orange); }
+.mitem.locked { opacity: .55; border-color: var(--line); }
+.place-h { color: var(--navy); }
+.place-h .pn { font-family: var(--mono); }
+/* 팀별 발자취 */
+.sheet { border-top: 2px solid var(--navy); background-color: var(--bg);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 20px 20px; }
+.sheet-head { background: var(--bg); border-bottom: 1.5px dashed var(--line); margin-bottom: 10px; }
+.sheet-head .x { background: #fff; border: 2px solid var(--navy); color: var(--navy); }
+.tabs button { background: #fff; border: 2px solid var(--line); }
+.tabs button.on { background: var(--navy); color: var(--yellow); border-color: var(--navy); }
+.stat { border: 2px solid var(--navy); box-shadow: none; }
+.stat b { color: var(--navy); font-family: var(--mono); }
+.chart, .bubble, .vote .v, .sol-gallery .s, .board5 .col, .cloud { box-shadow: none; border: 2px solid var(--navy); }
+.bubble.mine { background: #fff1f1; border-color: var(--orange); }
+.tchip { background: #eef1fb; color: var(--navy); }
+.cipher-box { background: var(--navy); border-radius: 12px; }
+.cipher-box .k { color: var(--yellow); }
+.cp-row { background: #fff; border: 1.5px solid var(--line); }
+.cp-key { background: var(--navy); color: var(--yellow); font-family: var(--mono); }
+.cp-ct { font-family: var(--mono); color: var(--orange); }
+.tracer { background: #fff; border-color: var(--line); }
+.tracer.ok { background: #fffbe6; border-color: var(--navy); }
+.tr-msg.good { color: var(--navy); }
+.lmsg.good { color: var(--navy); }
+.lc { color: var(--orange); font-family: var(--mono); }
+.lc.fx { color: var(--navy); background: #eef1fb; }
+.lgrid { border-color: var(--navy); }
+.lc.bR { border-right-color: var(--navy); } .lc.bB { border-bottom-color: var(--navy); }
+.lp { font-family: var(--mono); border-color: var(--line); }
+.ptable { border-color: var(--navy); }
+.ptable > div.h { background: #eef1fb; }
+.ptable .dv { color: var(--orange); background: #fff; font-family: var(--mono); }
+.sign-card { background: #fff; border: 1.5px solid var(--line); }
+.fb-n { color: var(--navy); font-family: var(--mono); }
+.timer { font-family: var(--mono); }
+.tray button.on { border-color: var(--navy); background: #fff6c9; }
+.sel-area { box-shadow: none; border: 2px solid var(--navy); }
+.stars button { border-color: var(--line); }
+.stars button.on { border-color: var(--navy); background: #fff6c9; }
+.spin { border-top-color: var(--navy); }
+.done-hero .big { filter: none; }
+.dm-box img, .cert-img { box-shadow: 5px 5px 0 var(--navy); border: 2px solid var(--navy); }
+#toast { background: var(--navy); color: #fff; border: 2px solid var(--yellow); }

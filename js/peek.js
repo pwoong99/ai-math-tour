@@ -1,12 +1,12 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=2.42";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText } from "./questions.js?v=2.42";
-import { PUZZLES } from "./puzzles.js?v=2.42";
-import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=2.42";
-import { SIGN_FIELDS, FIBO_ROWS } from "./inputs.js?v=2.42";
+import { esc } from "./fb.js?v=3.0";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText } from "./questions.js?v=3.0";
+import { PUZZLES } from "./puzzles.js?v=3.0";
+import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.0";
+import { SIGN_FIELDS, FIBO_ROWS } from "./inputs.js?v=3.0";
 
-const PALETTE = ["#17795a", "#f08a24", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
+const PALETTE = ["#1f2a5c", "#e5484d", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
 const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 const fmt = (n, d = 1) => Number.isFinite(n) ? (Math.round(n * 10 ** d) / 10 ** d).toLocaleString() : "-";
@@ -28,7 +28,7 @@ function tabs(el, names, render) {
 }
 
 /* 수직선 위에 팀마다 아이콘을 쌓아 올리는 그래프 */
-function dotStack(items, { unit = "", icon = "", color = "#17795a" } = {}) {
+function dotStack(items, { unit = "", icon = "", color = "#1f2a5c" } = {}) {
   if (!items.length) return "";
   const vals = items.map((i) => i.v);
   const uniq = [...new Set(vals)].sort((a, b) => a - b);
@@ -50,12 +50,12 @@ function dotStack(items, { unit = "", icon = "", color = "#17795a" } = {}) {
   cols.forEach((c, i) => {
     const cx = x0 + colW * (i + 0.5);
     const top = c.length === maxN && maxN > 0;
-    if (top) g += `<rect x="${cx - colW / 2 + 2}" y="10" width="${colW - 4}" height="${H - 50}" rx="10" fill="#fff4e3"/>`;
+    if (top) g += `<rect x="${cx - colW / 2 + 2}" y="10" width="${colW - 4}" height="${H - 50}" rx="10" fill="#fff6c9"/>`;
     c.forEach((it, k) => {
       const cy = H - 50 - r - 4 - k * (r * 2 + 4);
       g += icon
-        ? `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 1.8}">${icon}</text>${it.mine ? `<circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="none" stroke="#f08a24" stroke-width="3"/>` : ""}`
-        : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${it.mine ? "#f08a24" : color}" opacity=".9"/>`;
+        ? `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 1.8}">${icon}</text>${it.mine ? `<circle cx="${cx}" cy="${cy}" r="${r + 2}" fill="none" stroke="#e5484d" stroke-width="3"/>` : ""}`
+        : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${it.mine ? "#e5484d" : color}" opacity=".9"/>`;
     });
     g += `<text x="${cx}" y="${H - 28}" text-anchor="middle" font-size="${bins.length > 6 ? 10 : 13}" font-weight="800" fill="#1d2b2a">${esc(bins[i].label)}</text>`;
     g += `<text x="${cx}" y="${H - 10}" text-anchor="middle" font-size="11" fill="#5d6b69">${c.length}팀</text>`;
@@ -84,13 +84,13 @@ function wall(list, me, photoOf, capOf) {
       <img src="${photoOf(a)}" alt="" loading="lazy"><div class="cap">${capOf(a)}</div></div>`;
   }).join("")}</div>`;
 }
-function hbars(rows, { unit = "", max, color = "#17795a", icon = "", nameW = 74 }) {
+function hbars(rows, { unit = "", max, color = "#1f2a5c", icon = "", nameW = 74 }) {
   const mx = max ?? Math.max(...rows.map((r) => r.v), 1);
   return rows.map((r) => `
     <div class="row" style="margin:6px 0;gap:8px">
       <div style="width:${WIDE ? Math.max(nameW, 190) : nameW}px;flex:none;font-weight:800;font-size:14px;line-height:1.25" class="${r.mine ? "me" : ""}">${esc(r.name)}</div>
       <div class="grow" style="background:#f0ece1;border-radius:99px;height:22px;position:relative;overflow:hidden">
-        <i style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(4, r.v / mx * 100)}%;background:${r.mine ? "#f08a24" : color};border-radius:99px"></i>
+        <i style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(4, r.v / mx * 100)}%;background:${r.mine ? "#e5484d" : color};border-radius:99px"></i>
         ${icon ? `<span style="position:absolute;left:calc(${Math.max(4, r.v / mx * 100)}% - 22px);top:0;font-size:16px">${icon}</span>` : ""}
       </div>
       <div style="width:70px;text-align:right;font-weight:800;font-size:14px">${r.txt != null ? esc(r.txt) : fmt(r.v) + esc(unit)}</div></div>`).join("");
@@ -106,8 +106,8 @@ P.euler = (el, list, { myTeamId: me }) => {
   const f = EULER_FIGS.a;
   const startSvg = `<svg viewBox="-10 -10 260 260" style="width:100%;max-width:220px;display:block;margin:0 auto">
     ${f.E.map((e) => `<path d="${e[2] || `M${f.V[e[0]].join(" ")} L${f.V[e[1]].join(" ")}`}" fill="none" stroke="#c8c1b0" stroke-width="5"/>`).join("")}
-    ${Object.entries(f.V).map(([id, [x, y]]) => `<circle cx="${x}" cy="${y}" r="${8 + (starts[id] || 0) * 3}" fill="${starts[id] ? "#f08a24" : "#e0dbcf"}" opacity=".9"/>
-      ${starts[id] ? `<text x="${x + 24}" y="${y + 5}" font-size="15" font-weight="900" fill="#b35c0c">${starts[id]}팀</text>` : ""}`).join("")}</svg>`;
+    ${Object.entries(f.V).map(([id, [x, y]]) => `<circle cx="${x}" cy="${y}" r="${8 + (starts[id] || 0) * 3}" fill="${starts[id] ? "#e5484d" : "#e0dbcf"}" opacity=".9"/>
+      ${starts[id] ? `<text x="${x + 24}" y="${y + 5}" font-size="15" font-weight="900" fill="#b8282d">${starts[id]}팀</text>` : ""}`).join("")}</svg>`;
   const groups = ["가능", "불가능"].map((n) => ({ name: n === "가능" ? "⭕ 가능" : "❌ 불가능", items: list.filter((a) => a.data.possible === n) }));
   const odds = {};
   list.forEach((a) => { const k = a.data.odd; (odds[k] = odds[k] || []).push(a); });
@@ -115,7 +115,7 @@ P.euler = (el, list, { myTeamId: me }) => {
   el.innerHTML = `
     <div class="chart"><h4>가. 한붓그리기 — 가족들은 어느 점에서 출발했을까?</h4>${startSvg}
       <div class="muted" style="text-align:center">원이 클수록 그 점에서 출발한 가족이 많아요. 홀수점에서 출발해야 끝까지 그릴 수 있어요!</div></div>
-    <div class="chart"><h4>나. 한붓그리기가 가능할까? 가족 투표</h4>${voteBars(groups, me, (i) => i ? "#d64545" : "#17795a")}</div>
+    <div class="chart"><h4>나. 한붓그리기가 가능할까? 가족 투표</h4>${voteBars(groups, me, (i) => i ? "#d64545" : "#1f2a5c")}</div>
     <div class="chart"><h4>홀수점은 몇 개라고 했을까?</h4>${voteBars(oddRows, me)}</div>
     <h4 style="margin:14px 2px 8px">💬 가족들의 이유</h4>
     <div class="bubbles">${list.map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}">
@@ -137,8 +137,8 @@ P.cipher = (el, list, { myTeamId: me, config, admin }) => {
         const right = rows.filter((a) => normText(a.data.answers[i]) === ans).length;
         return `<div class="chart"><h4>${unk(c) ? "도전" : "문제"} ${i + 1} · <span style="color:#c62828;letter-spacing:1px">${esc(c.text)}</span>
           <span class="muted">KEY ${unk(c) ? (mine && c.answerKey ? esc(c.answerKey) : "?") : esc(c.key)}</span></h4>
-          ${mine && ans ? `<div class="muted" style="margin-bottom:6px">정답: <b style="color:#17795a;letter-spacing:1px">${esc(c.answer)}</b> · ${right} / ${rows.length}팀이 풀었어요</div>` : ""}
-          <div class="tchips" style="flex-direction:column;gap:6px">${groups.map(([txt, items]) => `<div style="${mine && ans && txt === ans ? "color:#17795a" : ""}">
+          ${mine && ans ? `<div class="muted" style="margin-bottom:6px">정답: <b style="color:#1f2a5c;letter-spacing:1px">${esc(c.answer)}</b> · ${right} / ${rows.length}팀이 풀었어요</div>` : ""}
+          <div class="tchips" style="flex-direction:column;gap:6px">${groups.map(([txt, items]) => `<div style="${mine && ans && txt === ans ? "color:#1f2a5c" : ""}">
             <b style="letter-spacing:1px">${esc(txt) || "-"}</b> ${mine && ans && txt === ans ? "✅" : ""} <span class="muted">${items.length}팀</span>
             ${items.some((a) => a.teamId === me) ? `<span class="tchip mine">우리 가족</span>` : ""}</div>`).join("")}</div></div>`;
       }).join("");
@@ -151,7 +151,7 @@ P.cipher = (el, list, { myTeamId: me, config, admin }) => {
         return `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))} · 열쇠 KEY ${esc(a.data.my.key)}</div>
           <div style="font-size:19px;font-weight:900;letter-spacing:2px;color:#c62828">${esc(a.data.my.text)}</div>
           <button type="button" class="btn small gray" style="margin-top:6px" data-show>정답 보기</button>
-          <div class="ans hidden" style="font-size:18px;font-weight:900;letter-spacing:2px;color:#17795a;margin-top:6px">${sh == null ? "" : esc(caesar(a.data.my.text, -sh))}</div></div>`;
+          <div class="ans hidden" style="font-size:18px;font-weight:900;letter-spacing:2px;color:#1f2a5c;margin-top:6px">${sh == null ? "" : esc(caesar(a.data.my.text, -sh))}</div></div>`;
       }).join("") || `<div class="empty">아직 창작 암호가 없어요.</div>`}</div>`;
     body.querySelectorAll("[data-show]").forEach((b) => b.onclick = () => { b.nextElementSibling.classList.toggle("hidden"); b.textContent = b.nextElementSibling.classList.contains("hidden") ? "정답 보기" : "숨기기"; });
   });
@@ -225,9 +225,9 @@ P.stride = (el, list, { myTeamId: me }) => {
       body.innerHTML = `${stats([[fmt(avg(s.map((x) => x.v))) + "cm", "학생 평균 1보 ★"], [fmt(avg(p)) + "cm", "부모님 평균 1보"], [fmt(Math.max(...s.map((x) => x.v))) + "cm", "가장 긴 학생 1보"]])}
         <div class="chart"><h4>가족별 학생 1보 길이</h4>${hbars(s, { unit: "cm", icon: "👣" })}</div>
         <div class="chart"><h4>학생과 부모님 1보 비교</h4>
-          <div class="legend"><span><i style="background:#f08a24"></i>학생</span><span><i style="background:#3a7bd5"></i>부모님</span></div>
+          <div class="legend"><span><i style="background:#e5484d"></i>학생</span><span><i style="background:#3a7bd5"></i>부모님</span></div>
           ${rows.map((a) => `<div style="margin:6px 0"><div style="font-weight:800;font-size:13px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
-            ${hbars([{ name: "학생", v: a.data.me1, txt: a.data.me1 + "cm" }], { max: Math.max(...rows.flatMap((x) => [x.data.me1, x.data.par1 || 0])), color: "#f08a24", nameW: 44 })}
+            ${hbars([{ name: "학생", v: a.data.me1, txt: a.data.me1 + "cm" }], { max: Math.max(...rows.flatMap((x) => [x.data.me1, x.data.par1 || 0])), color: "#e5484d", nameW: 44 })}
             ${hbars([{ name: "부모님", v: a.data.par1, txt: a.data.par1 + "cm" }], { max: Math.max(...rows.flatMap((x) => [x.data.me1, x.data.par1 || 0])), color: "#3a7bd5", nameW: 44 })}</div>`).join("")}</div>`;
       return;
     }
@@ -243,16 +243,16 @@ P.stride = (el, list, { myTeamId: me }) => {
     let g = "";
     rows.forEach((a, k) => {
       const y = 20 + k * rowH + rowH / 2, w = X(a.data.walk), p = X(a.data.map), d = Math.abs(a.data.walk - a.data.map);
-      g += `<text x="${L - 10}" y="${y}" text-anchor="end" dominant-baseline="central" font-size="12" font-weight="800" fill="${a.teamId === me ? "#f08a24" : "#1d2b2a"}">${esc(who(a, me))}</text>
+      g += `<text x="${L - 10}" y="${y}" text-anchor="end" dominant-baseline="central" font-size="12" font-weight="800" fill="${a.teamId === me ? "#e5484d" : "#1d2b2a"}">${esc(who(a, me))}</text>
         <line x1="${Math.min(w, p)}" x2="${Math.max(w, p)}" y1="${y}" y2="${y}" stroke="#c8c1b0" stroke-width="4" stroke-linecap="round"/>
-        <circle cx="${w}" cy="${y}" r="6.5" fill="#f08a24"/><circle cx="${p}" cy="${y}" r="6.5" fill="#3a7bd5"/>
+        <circle cx="${w}" cy="${y}" r="6.5" fill="#e5484d"/><circle cx="${p}" cy="${y}" r="6.5" fill="#3a7bd5"/>
         <text x="${W - 8}" y="${y}" text-anchor="end" dominant-baseline="central" font-size="11" font-weight="800" fill="#5d6b69">차이 ${fmt(d)}m</text>`;
     });
     [lo, (lo + hi) / 2, hi].forEach((v) => g += `<text x="${X(v)}" y="${H - 4}" text-anchor="middle" font-size="11" fill="#5d6b69">${fmt(v, 0)}m</text>`);
     const diffs = rows.map((a) => ({ a, d: Math.abs(a.data.walk - a.data.map) })).sort((x, y) => x.d - y.d);
     body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.walk))) + "m", "보폭 거리 평균 ★"], [fmt(avg(rows.map((a) => a.data.map))) + "m", "지도 앱 거리 평균 ★"], [fmt(avg(diffs.map((x) => x.d))) + "m", "평균 차이"]])}
       <div class="chart"><h4>내 보폭으로 잰 거리와 지도 앱 거리</h4>
-        <div class="legend"><span><i style="background:#f08a24"></i>보폭으로 잰 거리</span><span><i style="background:#3a7bd5"></i>지도 앱 거리</span></div>
+        <div class="legend"><span><i style="background:#e5484d"></i>보폭으로 잰 거리</span><span><i style="background:#3a7bd5"></i>지도 앱 거리</span></div>
         <svg viewBox="0 0 ${W} ${H}">${g}</svg></div>
       ${diffs.length ? `<div class="card" style="text-align:center">🎯 두 값이 가장 가까운 가족: <b>${esc(who(diffs[0].a, me))}</b> (차이 ${fmt(diffs[0].d)}m)</div>` : ""}`;
   });
@@ -273,9 +273,9 @@ P.quadrat = (el, list, { myTeamId: me }) => {
       const mx = Math.max(1, ...rows.flatMap((a) => [a.data.eye, a.data.aiCount]));
       body.innerHTML = `${stats([[fmt(e) + "송이", "👀 직접 센 수 평균 ★"], [fmt(ai) + "송이", "🤖 AI가 센 수 평균 ★"], [fmt(Math.abs(e - ai)) + "송이", "평균의 차이"]])}
         <div class="chart"><h4>방형구 안의 꽃 수</h4>
-          <div class="legend"><span><i style="background:#17795a"></i>직접 센 수</span><span><i style="background:#8e5cd9"></i>AI가 센 수</span></div>
+          <div class="legend"><span><i style="background:#1f2a5c"></i>직접 센 수</span><span><i style="background:#8e5cd9"></i>AI가 센 수</span></div>
           ${rows.map((a) => `<div style="margin:8px 0"><div style="font-weight:800;font-size:14px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
-            ${hbars([{ name: "👀 직접", v: a.data.eye }], { max: mx, unit: "", color: "#17795a" })}
+            ${hbars([{ name: "👀 직접", v: a.data.eye }], { max: mx, unit: "", color: "#1f2a5c" })}
             ${hbars([{ name: "🤖 AI", v: a.data.aiCount }], { max: mx, unit: "", color: "#8e5cd9" })}</div>`).join("")}
           <div class="muted">꽃이 겹쳐 있거나 봉오리가 있으면 AI와 사람이 센 수가 달라질 수 있어요. 같은 사진도 AI마다 숫자가 다를 수 있어요.</div></div>`;
       return;
@@ -293,11 +293,11 @@ P.area = (el, list, { myTeamId: me }) => {
       const mx = Math.max(1, ...rows.flatMap((a) => [a.data.app, a.data.map || 0, a.data.stride]));
       body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.app))) + "㎡", "측정 앱 평균 ★"], [fmt(avg(rows.map((a) => a.data.stride))) + "㎡", "보폭 넓이 평균 ★"], [fmt(avg(rows.map((a) => Math.abs(a.data.app - a.data.stride)))) + "㎡", "평균 차이"]])}
         <div class="chart"><h4>같은 꽃밭, 방법마다 넓이가 같을까?</h4>
-          <div class="legend"><span><i style="background:#17795a"></i>측정 앱</span><span><i style="background:#3a7bd5"></i>지도 앱</span><span><i style="background:#f08a24"></i>보폭</span></div>
+          <div class="legend"><span><i style="background:#1f2a5c"></i>측정 앱</span><span><i style="background:#3a7bd5"></i>지도 앱</span><span><i style="background:#e5484d"></i>보폭</span></div>
           ${rows.map((a) => `<div style="margin:8px 0"><div style="font-weight:800;font-size:14px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
-            ${hbars([{ name: "측정 앱", v: a.data.app, txt: a.data.app + "㎡" }], { max: mx, color: "#17795a", nameW: 58 })}
+            ${hbars([{ name: "측정 앱", v: a.data.app, txt: a.data.app + "㎡" }], { max: mx, color: "#1f2a5c", nameW: 58 })}
             ${a.data.map != null ? hbars([{ name: "지도 앱", v: a.data.map, txt: a.data.map + "㎡" }], { max: mx, color: "#3a7bd5", nameW: 58 }) : ""}
-            ${hbars([{ name: "보폭", v: a.data.stride, txt: a.data.stride + "㎡" }], { max: mx, color: "#f08a24", nameW: 58 })}</div>`).join("")}</div>`;
+            ${hbars([{ name: "보폭", v: a.data.stride, txt: a.data.stride + "㎡" }], { max: mx, color: "#e5484d", nameW: 58 })}</div>`).join("")}</div>`;
       return;
     }
     body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.total)), 0) + "송이", "우리 모두의 추정 (평균)"], [rows.length + "팀", "답을 낸 가족"]])}
@@ -331,7 +331,7 @@ P.golden = (el, list, { myTeamId: me }) => {
   [loA, (loA + hiA) / 2, hiA].forEach((v) => g += `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="#5d6b69">${fmt(v, 0)}</text>`);
   g += `<line x1="${X(loH)}" y1="${Y(loH * 1.618)}" x2="${X(hiH)}" y2="${Y(hiH * 1.618)}" stroke="#c9a227" stroke-width="3" stroke-dasharray="6 5"/>
     <text x="${X(hiH) - 4}" y="${Y(hiH * 1.618) + 18}" text-anchor="end" font-size="12" font-weight="800" fill="#a8861a">황금비 1 : 1.618</text>`;
-  rows.forEach((a) => g += `<circle cx="${X(a.data.hand)}" cy="${Y(a.data.arm)}" r="7" fill="${a.teamId === me ? "#f08a24" : "#17795a"}" opacity=".85"/>`);
+  rows.forEach((a) => g += `<circle cx="${X(a.data.hand)}" cy="${Y(a.data.arm)}" r="7" fill="${a.teamId === me ? "#e5484d" : "#1f2a5c"}" opacity=".85"/>`);
   g += `<text x="${(W + L) / 2}" y="${H - 6}" text-anchor="middle" font-size="12" fill="#5d6b69">손 길이 (cm)</text>
     <text x="10" y="${(H - B) / 2}" text-anchor="middle" font-size="12" fill="#5d6b69" transform="rotate(-90 10 ${(H - B) / 2})">손목~팔꿈치 (cm)</text>`;
   const rs = rows.map((a) => ({ name: who(a, me), v: a.data.arm / a.data.hand, mine: a.teamId === me })).sort((x, y) => Math.abs(x.v - 1.618) - Math.abs(y.v - 1.618));
@@ -357,9 +357,9 @@ P.pento = (el, list, { myTeamId: me, config, times, admin }) => {
       ${mode === "group" ? `<div class="muted">✔ = 서로 다른 조각 수 퍼즐을 ${need}가지 완성해 통과한 가족</div>` : ""}</div>
     <h4 style="margin:14px 2px 8px">퍼즐별로 보기 <span class="muted">— 퍼즐을 누르면 ${admin ? "가족들의 해법이" : "해결한 가족이"} 나와요</span></h4>
     <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))">${allowed.map((i) => `
-      <button type="button" class="s" data-pz="${i}" style="cursor:pointer;${i === el._pz ? "outline:3px solid #22305a" : ""}">
+      <button type="button" class="s" data-pz="${i}" style="cursor:pointer;${i === el._pz ? "outline:3px solid #1f2a5c" : ""}">
         <div style="display:flex;justify-content:center;align-items:center;height:70px">${miniGrid(PUZZLES[i].rows, 7)}</div>
-        <div style="font-size:12px">${esc(PUZZLES[i].name)}</div><b style="color:#17795a">${per[i].length}팀</b></button>`).join("")}</div>`;
+        <div style="font-size:12px">${esc(PUZZLES[i].name)}</div><b style="color:#1f2a5c">${per[i].length}팀</b></button>`).join("")}</div>`;
   const sel = per[el._pz] || [];
   if (admin) {
     // 관리자: 가족마다 실제로 놓은 조각 배치(해법)까지 모두 보여 줘요

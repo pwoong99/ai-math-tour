@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.42";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=2.42";
-import { renderInput } from "./inputs.js?v=2.42";
-import { renderPeek } from "./peek.js?v=2.42";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.42";
-import { drawDataMap, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=2.42";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.0";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.0";
+import { renderInput } from "./inputs.js?v=3.0";
+import { renderPeek } from "./peek.js?v=3.0";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.0";
+import { drawDataMap, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.0";
 import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -234,7 +234,7 @@ async function submit() {
     renderProgress();
     $("qSolved").innerHTML = `<span class="solved-tag">✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>`;
     const last = S.idx >= l.length - 1;
-    $("qDone").innerHTML = `<div class="card" style="background:#e3f3ec;margin:0;text-align:center">
+    $("qDone").innerHTML = `<div class="card" style="background:#eef1fb;margin:0;text-align:center">
         <b style="font-size:18px">✅ 제출했어요!</b><div class="muted">다른 가족은 어떻게 답했을까요?</div>
         <div class="row" style="margin-top:10px">
           ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>발자취 보기</button>`}

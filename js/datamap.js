@@ -1,9 +1,9 @@
 // 우리가족 'AI투어 데이터 맵' — ★ 숫자 12개로 만드는 5장면 사진 (숫자 → 정리 → 그림 → 규칙 → 리포트)
-import { PLACES, FIBS, pentoSolved } from "./questions.js?v=2.42";
+import { PLACES, FIBS, pentoSolved } from "./questions.js?v=3.0";
 
 const FONT = `"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
 const W = 1080, H = 1350;
-const INK = "#1d2b2a", SUB = "#5d6b69", GREEN = "#17795a", ORANGE = "#f08a24", CREAM = "#f6f3ea", LINE = "#e3ddcf";
+const INK = "#1f2a5c", SUB = "#4d5a80", GREEN = "#1f2a5c", ORANGE = "#e5484d", CREAM = "#fbfaf5", LINE = "#c9d2e6", YELLOW = "#ffd84d";
 
 // ★ 데이터 맵에 쓰이는 숫자 12개 (워크북 마무리 체크리스트 순서)
 export const STAR_ITEMS = [
@@ -51,21 +51,26 @@ function wrap(c, s, maxW, size, weight = 600) {
 const SCENES = ["숫자", "정리", "그림", "규칙", "리포트"];
 function frame(c, idx, title, sub, who) {
   c.fillStyle = CREAM; c.fillRect(0, 0, W, H);
+  // 모눈종이
+  c.strokeStyle = "#e2e8f3"; c.lineWidth = 2;
+  for (let x = 0; x <= W; x += 40) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+  for (let y = 0; y <= H; y += 40) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
   c.fillStyle = GREEN; c.fillRect(0, 0, W, 210);
   txt(c, "우리가족 ‘AI투어 데이터 맵’", 60, 82, { size: 40, weight: 900, color: "#fff" });
-  txt(c, `${idx + 1} / 5`, W - 60, 82, { size: 34, weight: 800, color: "#cdebdc", align: "right" });
+  txt(c, `${idx + 1} / 5`, W - 60, 82, { size: 34, weight: 800, color: YELLOW, align: "right" });
   // 5장면 단계
   const sw = (W - 120) / 5;
   SCENES.forEach((s, i) => {
     const x = 60 + i * sw;
-    rr(c, x + 4, 112, sw - 8, 64, 32); c.fillStyle = i === idx ? "#fff" : "rgba(255,255,255,.18)"; c.fill();
-    txt(c, `${i + 1} ${s}`, x + sw / 2, 155, { size: 28, weight: 800, color: i === idx ? GREEN : "#e6f5ee", align: "center" });
-    if (i < 4) txt(c, "→", x + sw, 155, { size: 24, weight: 800, color: "#9fd4bd", align: "center" });
+    rr(c, x + 4, 112, sw - 8, 64, 12); c.fillStyle = i === idx ? YELLOW : "rgba(255,255,255,.12)"; c.fill();
+    txt(c, `${i + 1} ${s}`, x + sw / 2, 155, { size: 28, weight: 800, color: i === idx ? GREEN : "#dfe5f5", align: "center" });
+    if (i < 4) txt(c, "→", x + sw, 155, { size: 24, weight: 800, color: "#9aa8d6", align: "center" });
   });
   txt(c, title, 60, 290, { size: 54, weight: 900 });
   if (sub) txt(c, sub, 60, 340, { size: 28, weight: 600, color: SUB, max: W - 120 });
   // 아래
-  c.fillStyle = "#ece6d6"; c.fillRect(0, H - 86, W, 86);
+  c.fillStyle = "#eef1fb"; c.fillRect(0, H - 86, W, 86);
+  c.fillStyle = GREEN; c.fillRect(0, H - 86, W, 3);
   txt(c, `${who.school} ${who.name} 가족 · ${who.date}`, 60, H - 34, { size: 26, weight: 700, color: SUB, max: 640 });
   txt(c, "순천수학교육체험센터", W - 60, H - 34, { size: 26, weight: 800, color: GREEN, align: "right" });
 }
@@ -76,7 +81,7 @@ function scene1(c, d) {
   const cw = (W - 120 - 40) / 3, ch = 200;
   STAR_ITEMS.forEach((it, i) => {
     const x = 60 + (i % 3) * (cw + 20), y = 380 + Math.floor(i / 3) * (ch + 20);
-    rr(c, x, y, cw, ch, 26); c.fillStyle = "#fff"; c.fill();
+    rr(c, x, y, cw, ch, 26); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
     c.fillStyle = PLACES[it.place].color; rr(c, x, y, 14, ch, 7); c.fill();
     txt(c, `${PLACES[it.place].no} ${it.short}`, x + 34, y + 52, { size: 26, weight: 800, color: SUB, max: cw - 50 });
     const v = d.mine[it.k];
@@ -92,12 +97,12 @@ function scene1(c, d) {
 function scene2(c, d) {
   frame(c, 1, "표로 정리하기", `우리 가족 숫자를 ${d.sessName} ${d.n}가족의 숫자와 나란히 놓았어요.`, d.who);
   const x0 = 60, cols = [x0, 480, 670, 850], top = 440, rh = 60;
-  rr(c, x0, top - 60, W - 120, 64, 16); c.fillStyle = "#22305a"; c.fill();
+  rr(c, x0, top - 60, W - 120, 64, 12); c.fillStyle = GREEN; c.fill();
   ["항목", "우리 가족", "모두의 평균", "범위"].forEach((h, i) => txt(c, h, i ? cols[i] + 80 : cols[0] + 22, top - 17, { size: 26, weight: 800, color: "#fff", align: i ? "center" : "left" }));
   let lastPlace = "";
   STAR_ITEMS.forEach((it, i) => {
     const y = top + 14 + i * rh;
-    c.fillStyle = i % 2 ? "#fff" : "#fbf9f3"; c.fillRect(x0, y, W - 120, rh);
+    c.fillStyle = i % 2 ? "#fff" : "#f4f6fc"; c.fillRect(x0, y, W - 120, rh);
     if (it.place !== lastPlace) { lastPlace = it.place; c.fillStyle = PLACES[it.place].color; c.fillRect(x0, y, 8, rh); }
     else { c.fillStyle = PLACES[it.place].color; c.fillRect(x0, y, 8, rh); }
     const u = unitOf(it, d.m), all = d.all.map((r) => r[it.k]).filter((v) => v != null);
@@ -112,7 +117,7 @@ function scene2(c, d) {
 
 /* 3. 그림 */
 function strip(c, x, y, w, vals, mine, unit, title) {
-  rr(c, x, y, w, 330, 24); c.fillStyle = "#fff"; c.fill();
+  rr(c, x, y, w, 330, 24); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
   txt(c, title, x + 26, y + 52, { size: 28, weight: 900, max: w - 50 });
   const v = vals.filter((a) => a != null);
   if (!v.length) { txt(c, "자료가 아직 없어요", x + w / 2, y + 190, { size: 24, color: SUB, align: "center" }); return; }
@@ -120,17 +125,17 @@ function strip(c, x, y, w, vals, mine, unit, title) {
   const X = (a) => x + 40 + (a - lo) / span * (w - 80);
   c.strokeStyle = LINE; c.lineWidth = 6; c.beginPath(); c.moveTo(x + 30, y + 220); c.lineTo(x + w - 30, y + 220); c.stroke();
   const stack = {};
-  v.forEach((a) => { const k = Math.round(X(a) / 18); stack[k] = (stack[k] || 0) + 1; c.fillStyle = "rgba(23,121,90,.55)"; c.beginPath(); c.arc(X(a), y + 220 - (stack[k] - 1) * 20 - 14, 10, 0, 7); c.fill(); });
+  v.forEach((a) => { const k = Math.round(X(a) / 18); stack[k] = (stack[k] || 0) + 1; c.fillStyle = "rgba(31,42,92,.45)"; c.beginPath(); c.arc(X(a), y + 220 - (stack[k] - 1) * 20 - 14, 10, 0, 7); c.fill(); });
   const av = avg(v);
-  c.strokeStyle = "#22305a"; c.lineWidth = 3; c.setLineDash([8, 6]); c.beginPath(); c.moveTo(X(av), y + 100); c.lineTo(X(av), y + 236); c.stroke(); c.setLineDash([]);
-  txt(c, `평균 ${num(av)}${unit}`, X(av), y + 92, { size: 22, weight: 800, color: "#22305a", align: "center" });
+  c.strokeStyle = GREEN; c.lineWidth = 3; c.setLineDash([8, 6]); c.beginPath(); c.moveTo(X(av), y + 100); c.lineTo(X(av), y + 236); c.stroke(); c.setLineDash([]);
+  txt(c, `평균 ${num(av)}${unit}`, X(av), y + 92, { size: 22, weight: 800, color: GREEN, align: "center" });
   if (mine != null) {
     c.fillStyle = ORANGE; c.beginPath(); c.arc(X(mine), y + 264, 16, 0, 7); c.fill();
     txt(c, `우리 ${num(mine)}${unit}`, Math.min(Math.max(X(mine), x + 90), x + w - 90), y + 314, { size: 26, weight: 900, color: ORANGE, align: "center" });
   }
 }
 function pairBars(c, x, y, w, title, items, unit) {
-  rr(c, x, y, w, 330, 24); c.fillStyle = "#fff"; c.fill();
+  rr(c, x, y, w, 330, 24); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
   txt(c, title, x + 26, y + 52, { size: 28, weight: 900, max: w - 50 });
   const mx = Math.max(1, ...items.flatMap((it) => [it.v ?? 0, it.avg ?? 0]));
   items.forEach((it, i) => {
@@ -142,8 +147,8 @@ function pairBars(c, x, y, w, title, items, unit) {
     txt(c, it.v == null ? "-" : `${num(it.v)}${unit}`, x + w - 26, yy + 46, { size: 26, weight: 900, align: "right" });
     if (it.avg != null) {
       const ax = x + 26 + it.avg / mx * bw;
-      c.strokeStyle = "#22305a"; c.lineWidth = 3; c.beginPath(); c.moveTo(ax, yy + 16); c.lineTo(ax, yy + 58); c.stroke();
-      txt(c, `평균 ${num(it.avg)}`, Math.min(ax, x + bw - 20), yy + 82, { size: 20, weight: 700, color: "#22305a", align: "center" });
+      c.strokeStyle = GREEN; c.lineWidth = 3; c.beginPath(); c.moveTo(ax, yy + 16); c.lineTo(ax, yy + 58); c.stroke();
+      txt(c, `평균 ${num(it.avg)}`, Math.min(ax, x + bw - 20), yy + 82, { size: 20, weight: 700, color: GREEN, align: "center" });
     }
   });
 }
@@ -157,14 +162,14 @@ function scene3(c, d) {
   pairBars(c, 60 + cw + 24, 734, cw, "④ 꽃밭 넓이: 앱 vs 보폭", [{ name: "측정 앱", v: m.areaApp, avg: A("areaApp"), color: GREEN }, { name: "보폭", v: m.areaStride, avg: A("areaStride"), color: ORANGE }], "㎡");
   // ⑤ 황금비 막대
   const y = 1088;
-  rr(c, 60, y, W - 120, 160, 24); c.fillStyle = "#fff"; c.fill();
+  rr(c, 60, y, W - 120, 160, 24); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
   const r = m.hand && m.arm ? m.arm / m.hand : null;
   txt(c, `⑤ 손 : 손목~팔꿈치 = 1 : ${num(r, 2)}`, 86, y + 52, { size: 28, weight: 900 });
   const gx = (v) => 100 + (Math.min(Math.max(v, 1), 2.2) - 1) / 1.2 * (W - 240);
   c.fillStyle = "#f3ead0"; rr(c, 100, y + 84, W - 240, 22, 11); c.fill();
   c.fillStyle = "#c9a227"; c.fillRect(gx(1.618) - 4, y + 72, 8, 46);
   txt(c, "황금비 1.618", gx(1.618), y + 146, { size: 22, weight: 800, color: "#a8861a", align: "center" });
-  d.all.forEach((row) => { if (row.hand && row.arm) { c.fillStyle = "rgba(23,121,90,.45)"; c.beginPath(); c.arc(gx(row.arm / row.hand), y + 95, 9, 0, 7); c.fill(); } });
+  d.all.forEach((row) => { if (row.hand && row.arm) { c.fillStyle = "rgba(31,42,92,.4)"; c.beginPath(); c.arc(gx(row.arm / row.hand), y + 95, 9, 0, 7); c.fill(); } });
   if (r) { c.fillStyle = ORANGE; c.beginPath(); c.arc(gx(r), y + 95, 16, 0, 7); c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 4; c.stroke(); }
 }
 
@@ -188,7 +193,7 @@ function scene4(c, d) {
   const rh = 114;
   rules.forEach(([t, f, s, col], i) => {
     const y = 376 + i * (rh + 10);
-    rr(c, 60, y, W - 120, rh, 22); c.fillStyle = "#fff"; c.fill();
+    rr(c, 60, y, W - 120, rh, 22); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
     c.fillStyle = col; rr(c, 60, y, 12, rh, 6); c.fill();
     txt(c, t, 94, y + 36, { size: 23, weight: 800, color: col });
     txt(c, f, 94, y + 74, { size: 31, weight: 900, max: W - 200 });
@@ -221,13 +226,13 @@ function scene5(c, d) {
     const ls = wrap(c, s, W - 230, 28, 700);
     const h = Math.max(78, 30 + ls.length * 38);
     if (y + h > limit) break;
-    rr(c, 60, y, W - 120, h, 20); c.fillStyle = "#fff"; c.fill();
+    rr(c, 60, y, W - 120, h, 20); c.fillStyle = "#fff"; c.fill(); c.strokeStyle = GREEN; c.lineWidth = 3; c.stroke();
     txt(c, ic, 90, y + h / 2 + 13, { size: 36, weight: 400 });
     ls.forEach((l, i) => txt(c, l, 156, y + h / 2 + 10 - (ls.length - 1) * 19 + i * 38, { size: 28, weight: 700 }));
     y += h + 10;
   }
   const by = Math.max(y + 6, limit - 40);
-  rr(c, 60, by, W - 120, boxH, 26); c.fillStyle = "#22305a"; c.fill();
+  rr(c, 60, by, W - 120, boxH, 16); c.fillStyle = GREEN; c.fill();
   txt(c, "정직한 숫자가 좋은 AI를 만들어요!", W / 2, by + 62, { size: 38, weight: 900, color: "#ffd84d", align: "center" });
   wrap(c, `우리 가족 숫자 ${STAR_ITEMS.filter((it) => m[it.k] != null).length}개가 다른 가족의 숫자와 합쳐져 순천 AI 데이터 맵이 돼요.`, W - 200, 25).forEach((l, i) =>
     txt(c, l, W / 2, by + 104 + i * 32, { size: 25, weight: 600, color: "#e7ecff", align: "center" }));
