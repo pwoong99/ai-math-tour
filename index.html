@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="AI수학투어">
   <meta name="format-detection" content="telephone=no">
-  <link rel="stylesheet" href="css/app.css?v=2.32">
+  <link rel="stylesheet" href="css/app.css?v=2.42">
 </head>
 <body>
   <header class="topbar">
@@ -52,6 +52,7 @@
     <section id="v-mission" class="hidden">
       <div class="progress"><div class="bar"><i id="pBar"></i></div><b id="pText"></b></div>
       <div class="card">
+        <div id="qPlace" class="q-place"></div>
         <div class="qhead"><span id="qNum" class="qnum"></span><h2 id="qTitle"></h2></div>
         <div id="qSolved"></div>
         <div id="qDesc" class="qdesc"></div>
@@ -78,6 +79,17 @@
         <p class="muted" style="margin:0">함께 걷고, 세고, 생각을 나눈 멋진 수학 탐험가 가족이에요.</p>
       </div>
       <div class="card">
+        <h3 style="margin:0 0 6px">📊 우리가족 AI투어 데이터 맵</h3>
+        <p class="muted" style="margin:0 0 10px">오늘 모은 ★ 숫자 12개가 숫자 → 정리 → 그림 → 규칙 → 리포트, 다섯 장면으로 바뀌었어요.</p>
+        <div id="dmTabs" class="tabs dm-tabs"></div>
+        <div id="dmBox" class="dm-box"><div class="loading"><div class="spin"></div>데이터 맵을 만들고 있어요…</div></div>
+        <div class="row" style="margin-top:12px">
+          <button id="btnDmSave" class="btn block grow" type="button">📥 이 장면 저장</button>
+          <button id="btnDmAll" class="btn ghost" type="button">5장 모두 저장</button>
+        </div>
+        <p class="muted" style="margin:8px 0 0">저장이 안 되면 그림을 길게 눌러 「사진에 저장」을 골라 주세요.</p>
+      </div>
+      <div class="card">
         <h3 style="margin:0 0 6px">🎓 수료증</h3>
         <label class="fld" for="inpGuardian">함께한 보호자 이름 <small>(선택 · 수료증에만 들어가고 저장되지 않아요)</small></label>
         <input id="inpGuardian" class="inp" maxlength="12" placeholder="비워 두면 「보호자와 함께」로 나와요">
@@ -102,6 +114,6 @@
     </div>
   </nav>
 
-  <script type="module" src="js/app.js?v=2.32"></script>
+  <script type="module" src="js/app.js?v=2.42"></script>
 </body>
 </html>

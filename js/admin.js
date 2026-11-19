@@ -4,12 +4,13 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.32";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, pentoSettings, pentoSolved } from "./questions.js?v=2.32";
-import { PUZZLES } from "./puzzles.js?v=2.32";
-import { miniGrid } from "./widgets.js?v=2.32";
-import { renderPeek } from "./peek.js?v=2.32";
-import { drawRoster, savePng } from "./cert.js?v=2.32";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=2.42";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=2.42";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=2.42";
+import { PUZZLES } from "./puzzles.js?v=2.42";
+import { miniGrid } from "./widgets.js?v=2.42";
+import { renderPeek } from "./peek.js?v=2.42";
+import { drawRoster, savePng } from "./cert.js?v=2.42";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -330,7 +331,8 @@ function renderQuestions(fillSettings) {
       <div class="no">${q.hidden ? "-" : no}</div><div style="font-size:24px">${qIcon(q)}</div>
       <div class="tt"><input data-f="title" value="${esc(qTitle(q))}">
         <textarea data-f="desc" rows="2">${esc(qDesc(q))}</textarea>
-        <div class="muted" style="font-size:12px">${isBuiltin(q) ? "기본 미션" : "추가한 미션 · " + CUSTOM_KINDS[q.kind]}${q.kind === "scale" ? " · 관리자만 보는 답" : ""}</div></div>
+        <div class="muted" style="font-size:12px">${PLACES[qPlace(q)].no} ${PLACES[qPlace(q)].name}${qCode(q) ? ` · 활동 ${qCode(q)}` : ""} · ${isBuiltin(q) ? "기본 미션" : "추가한 미션 · " + CUSTOM_KINDS[q.kind]}${q.kind === "scale" ? " · 관리자만 보는 답" : ""}
+          ${isBuiltin(q) ? "" : `<select data-f="place" class="inp" style="padding:4px 8px;width:auto;display:inline-block;margin-left:6px">${PLACE_ORDER.map((k) => `<option value="${k}" ${qPlace(q) === k ? "selected" : ""}>${PLACES[k].no} ${PLACES[k].name}</option>`).join("")}</select>`}</div></div>
       <div style="display:grid;gap:4px">
         <button class="btn small gray" data-a="up" type="button">↑</button>
         <button class="btn small gray" data-a="down" type="button">↓</button></div>
@@ -342,6 +344,7 @@ function renderQuestions(fillSettings) {
     const i = Number(row.dataset.i);
     row.querySelector('[data-f="title"]').oninput = (e) => d[i].title = e.target.value;
     row.querySelector('[data-f="desc"]').oninput = (e) => d[i].desc = e.target.value;
+    row.querySelector('[data-f="place"]')?.addEventListener("change", (e) => { d[i].place = e.target.value; renderQuestions(false); });
     row.querySelector('[data-a="up"]').onclick = () => { if (i > 0) { [d[i - 1], d[i]] = [d[i], d[i - 1]]; renderQuestions(false); } };
     row.querySelector('[data-a="down"]').onclick = () => { if (i < d.length - 1) { [d[i + 1], d[i]] = [d[i], d[i + 1]]; renderQuestions(false); } };
     row.querySelector('[data-a="hide"]').onclick = () => { d[i].hidden = !d[i].hidden; renderQuestions(false); };
@@ -351,9 +354,9 @@ function renderQuestions(fillSettings) {
   });
   if (!fillSettings) return;
   const c = A.config;
-  $("sText").value = c.cipher.text || ""; $("sKey").value = c.cipher.key ?? "?"; $("sHint").value = c.cipher.hint || "";
-  $("sAns").value = c.cipher.answer || ""; $("sAnsK").value = c.cipher.answerK ?? "";
-  $("sArea").value = c.quadratArea; $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
+  A.cpDraft = (c.ciphers || DEFAULT_CIPHERS).map((x) => ({ ...x }));
+  renderCiphers();
+  $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
   $("sTimer").checked = c.pentoTimerShow !== false;
   const ps = pentoSettings(c);
   A.pzSet = new Set(ps.list);
@@ -361,8 +364,9 @@ function renderQuestions(fillSettings) {
   document.querySelectorAll('input[name="pzMode"]').forEach((r) => r.checked = r.value === ps.mode);
   $("pzGroupNeed").value = Number(c.pentoGroupNeed) || 3;
   pzModeUi();
-  renderPz(); cipherCheck();
+  renderPz();
 }
+$("cPlace").innerHTML = PLACE_ORDER.map((k) => `<option value="${k}" ${k === "p4" ? "selected" : ""}>${PLACES[k].no} ${PLACES[k].name}</option>`).join("");
 $("cKind").innerHTML = Object.entries(CUSTOM_KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 $("cKind").onchange = () => {
   $("cNum").classList.toggle("hidden", $("cKind").value !== "number");
@@ -371,13 +375,17 @@ $("cKind").onchange = () => {
 $("cAdd").onclick = () => {
   const kind = $("cKind").value, title = $("cTitle").value.trim();
   if (!title) return toast("제목을 써 주세요.");
-  const q = { id: "c_" + Date.now().toString(36), kind, title, desc: $("cDesc").value.trim(), hidden: false };
+  const q = { id: "c_" + Date.now().toString(36), kind, title, desc: $("cDesc").value.trim(), hidden: false, place: $("cPlace").value };
   if (kind === "number") { q.label = $("cLabel").value.trim() || "답"; q.unit = $("cUnit").value.trim(); q.intOnly = $("cInt").checked; }
   if (kind === "choice") {
     q.options = $("cOpts").value.split("\n").map((s) => s.trim()).filter(Boolean);
     if (q.options.length < 2) return toast("고를 것을 두 개 이상 적어 주세요.");
   }
-  A.qDraft.push(q);
+  // 같은 장소의 마지막 미션 바로 뒤에 넣어요
+  const rank = (x) => PLACE_ORDER.indexOf(qPlace(x));
+  let at = 0;
+  A.qDraft.forEach((x, k) => { if (rank(x) <= rank(q)) at = k + 1; });
+  A.qDraft.splice(at, 0, q);
   renderQuestions(false);
   ["cTitle", "cDesc", "cLabel", "cUnit", "cOpts"].forEach((id) => $(id).value = "");
   toast("목록에 추가했어요. 「문제 목록 저장」을 눌러야 가족 화면에 반영돼요.");
@@ -392,7 +400,7 @@ $("qSave").onclick = async () => {
     }
     return o;
   });
-  await updateDoc(doc(db, C.config, "main"), { questions: clean });
+  await updateDoc(doc(db, C.config, "main"), { questions: clean, qVersion: Q_VERSION });
   toast("문제 목록을 저장했어요.");
 };
 
@@ -415,16 +423,39 @@ function pzModeUi() {
 document.querySelectorAll('input[name="pzMode"]').forEach((r) => r.onchange = pzModeUi);
 $("pzAll").onclick = () => { A.pzSet = new Set(PUZZLES.map((_, i) => i)); renderPz(); };
 $("pzNone").onclick = () => { A.pzSet = new Set(); renderPz(); };
-function cipherCheck() {
-  const t = $("sText").value.toUpperCase(), a = $("sAns").value.toUpperCase().trim(), k = Number($("sAnsK").value || $("sKey").value);
-  if (!t || !a || !Number.isFinite(k) || !k) { $("sCheck").textContent = ""; return; }
-  const dec = t.replace(/[A-Z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 65 - k + 260) % 26 + 65));
-  $("sCheck").innerHTML = dec.trim() === a ? `✅ 열쇠 ${k}로 풀면 정답 문장과 같아요.` : `⚠️ 열쇠 ${k}로 풀면 「${esc(dec)}」 — 정답 문장과 달라요. 확인해 주세요.`;
+// 스페이스 암호 문제 편집
+function renderCiphers() {
+  const d = A.cpDraft;
+  $("cpList").innerHTML = d.map((c, i) => {
+    const unk = !/^[A-Za-z]$/.test(String(c.key || "").trim());
+    const sh = keyShift(unk ? c.answerKey : c.key);
+    const dec = sh == null ? "" : caesar(c.text, -sh);
+    const ok = sh != null && c.answer && normText(dec) === normText(c.answer);
+    return `<div class="cp-edit" data-i="${i}">
+      <div class="row" style="gap:6px;align-items:center"><b style="width:28px">${i + 1}</b>
+        <input data-f="key" class="inp" style="width:56px;text-align:center;text-transform:uppercase" maxlength="1" placeholder="KEY" value="${esc(c.key || "")}">
+        <input data-f="text" class="inp grow" style="text-transform:uppercase" placeholder="암호문" value="${esc(c.text || "")}">
+        <button type="button" class="btn small red" data-del>✕</button></div>
+      <div class="row" style="gap:6px;margin-top:6px;padding-left:34px">
+        <input data-f="answer" class="inp grow" style="text-transform:uppercase" placeholder="정답 (원래 문장)" value="${esc(c.answer || "")}">
+        ${unk ? `<input data-f="answerKey" class="inp" style="width:84px;text-align:center;text-transform:uppercase" maxlength="1" placeholder="정답 KEY" value="${esc(c.answerKey || "")}">` : ""}</div>
+      ${unk ? `<div style="padding-left:34px;margin-top:6px"><input data-f="hint" class="inp" placeholder="힌트 (선택)" value="${esc(c.hint || "")}"></div>` : ""}
+      <div class="muted" style="padding-left:34px;margin-top:4px;font-size:13px">${sh == null ? "⚠️ 열쇠(또는 정답 KEY)를 알파벳 한 글자로 써 주세요." : ok ? `✅ KEY ${String.fromCharCode(65 + sh)}로 풀면 정답과 같아요.` : `⚠️ KEY ${String.fromCharCode(65 + sh)}로 풀면 「${esc(dec)}」 — 정답과 달라요.`}</div></div>`;
+  }).join("");
+  $("cpList").querySelectorAll(".cp-edit").forEach((row) => {
+    const i = Number(row.dataset.i);
+    row.querySelectorAll("[data-f]").forEach((inp) => inp.onchange = () => {
+      d[i][inp.dataset.f] = ["key", "text", "answer", "answerKey"].includes(inp.dataset.f) ? inp.value.toUpperCase().trim() : inp.value.trim();
+      if (inp.dataset.f === "key" && !d[i].key) d[i].key = "?";
+      renderCiphers();
+    });
+    row.querySelector("[data-del]").onclick = () => { if (d.length > 1) { d.splice(i, 1); renderCiphers(); } else toast("문제는 하나 이상 있어야 해요."); };
+  });
 }
-["sText", "sAns", "sAnsK", "sKey"].forEach((id) => $(id).addEventListener("input", cipherCheck));
+$("cpAdd").onclick = () => { A.cpDraft.push({ key: "A", text: "", answer: "" }); renderCiphers(); };
+$("cpReset").onclick = () => { if (confirm("워크북의 암호 문제 5개로 되돌릴까요? (저장해야 반영돼요)")) { A.cpDraft = DEFAULT_CIPHERS.map((x) => ({ ...x })); renderCiphers(); } };
 
 $("sSave").onclick = async () => {
-  const area = Number($("sArea").value);
   const need = Number($("pzNeed").value);
   const pzMode = document.querySelector('input[name="pzMode"]:checked')?.value || "group";
   const gNeed = Number($("pzGroupNeed").value);
@@ -432,17 +463,17 @@ $("sSave").onclick = async () => {
   if (!A.pzSet.size) return toast("가족이 고를 수 있는 펜토미노 퍼즐을 하나 이상 골라 주세요.");
   if (pzMode === "count" && (!Number.isInteger(need) || need < 1 || need > A.pzSet.size)) return toast(`통과에 필요한 퍼즐 수는 1부터 ${A.pzSet.size} 사이로 써 주세요.`);
   if (pzMode === "group" && (!Number.isInteger(gNeed) || gNeed < 1 || gNeed > gAvail)) return toast(`서로 다른 조각 수는 1부터 ${gAvail} 사이로 써 주세요. (지금 고른 퍼즐의 조각 수는 ${gAvail}가지예요)`);
-  if (!(area > 0)) return toast("꽃밭 넓이를 숫자로 써 주세요.");
-  const key = $("sKey").value.trim();
-  if (key !== "?" && !/^\d{1,2}$/.test(key)) return toast("열쇠 k는 숫자(1~25) 또는 ?로 써 주세요.");
+  const ciphers = A.cpDraft.map((c) => {
+    const o = { key: /^[A-Z]$/.test(c.key || "") ? c.key : "?", text: normText(c.text), answer: normText(c.answer) };
+    if (o.key === "?") { o.answerKey = c.answerKey || ""; if (c.hint) o.hint = c.hint; }
+    return o;
+  });
+  const badCp = ciphers.findIndex((c) => !c.text || !/^[A-Z ]+$/.test(c.text));
+  if (badCp >= 0) return toast(`암호 ${badCp + 1}번의 암호문을 영어 알파벳으로 써 주세요.`);
   const gas = $("sGas").value.trim();
   if (gas && !/^https:\/\/script\.google\.com\//.test(gas)) return toast("Apps Script 웹앱 주소(https://script.google.com/…)를 넣어 주세요.");
   await updateDoc(doc(db, C.config, "main"), {
-    cipher: {
-      text: $("sText").value.toUpperCase().trim(), key, hint: $("sHint").value.trim(),
-      answer: $("sAns").value.toUpperCase().trim(), answerK: $("sAnsK").value.trim() ? Number($("sAnsK").value) : deleteField()
-    },
-    quadratArea: area, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroupNeed: pzMode === "group" ? gNeed : (Number(A.config.pentoGroupNeed) || 3), pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
+    ciphers, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroupNeed: pzMode === "group" ? gNeed : (Number(A.config.pentoGroupNeed) || 3), pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
   });
   toast("설정을 저장했어요.");
 };
@@ -505,14 +536,18 @@ async function loadResults() {
 
 function summarize(kind, d, priv) {
   if (!d) return "";
+  const v = (x) => x ?? "-";
   switch (kind) {
-    case "euler": return `${d.possible} / 홀수점 ${d.odd}개 / ${d.reason}`;
-    case "cipher": return `${d.decoded}${d.k != null ? ` (k=${d.k})` : ""}`;
-    case "latin": return `사진 있음${d.name ? " / " + d.name : ""}`;
-    case "food": return `${d.value}g`;
-    case "stride": return `1보 ${d.step}cm / 보폭 거리 ${d.walk}m / GPS ${d.gps}m`;
-    case "quadrat": return `직접 ${d.eye} / AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2} / 전체 ${d.total}`;
-    case "fibo": return `${d.plant} / ${d.petals}장`;
+    case "euler": return `따라 그리기 ${d.draw ? "성공" : "-"} (출발 ${d.draw?.a?.path?.[0] || "-"}·${d.draw?.b?.path?.[0] || "-"}) / ${d.possible} / 홀수점 ${d.odd}개 / ${d.reason}`;
+    case "cipher": return d.answers ? `${d.answers.map((t, i) => `${i + 1}) ${t}${d.keys?.[i] ? ` [KEY ${d.keys[i]}]` : ""}`).join(" ")} / 창작: KEY ${d.my?.key} ${d.my?.text}` : `${d.decoded || ""}`;
+    case "latin": return `연습 ${d.s1 ? "완성" : "-"} / 설계 ${d.design ? "완성" : "-"} / 사진 있음${d.name ? " / " + d.name : ""}`;
+    case "sign": return `사막여우 ${v(d.foxL1)}~${v(d.foxL2)}cm ${v(d.foxW)}kg / 설가타 ${v(d.sulL1)}~${v(d.sulL2)}cm ${v(d.sulA)}년 / 알다브라 ${v(d.aldA1)}~${v(d.aldA2)}년 ${v(d.aldH)}m`;
+    case "food": return d.q1 != null ? `표 ${d.g2}/${d.g4}/${d.g8}g·${d.n7}마리 / ★4마리 ${d.q1}g / ${d.q2}마리 / 과일 ${d.fruit}g 곡식 ${d.grain}g ${d.fruitPct}% / ★나이 ${d.age}세 ${d.times}배 ${d.pct}% / ${d.why}` : `${d.value}g`;
+    case "stride": return d.me1 != null ? `★1보 ${d.me1}cm (5보 ${d.me5}) / 부모님 ${d.par1}cm${d.sib1 != null ? ` / 동생 ${d.sib1}cm` : ""} / ${d.steps}보 ★${d.walk}m / ★지도 ${d.map}m / 차이 ${d.diff}m / ${d.why}` : `1보 ${d.step}cm / 보폭 ${d.walk}m / GPS ${d.gps}m`;
+    case "quadrat": return `★직접 ${d.eye} / ★AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2}`;
+    case "area": return `★측정 앱 ${d.app}㎡ / 지도 ${v(d.map)}㎡ / 가로 ${d.ws}보 ${d.wm}m · 세로 ${d.hs}보 ${d.hm}m / ★보폭 넓이 ${d.stride}㎡ / 1㎡ ${d.perM2} × 넓이 = ${d.total}송이`;
+    case "fibo": return d.plants ? `${Object.entries(d.plants).map(([n, p]) => `${n}장 ${p}`).join(", ")}${d.cw != null ? ` / 솔방울 ${d.cw}·${d.ccw}줄` : ""} / ★${d.star}${d.starType === "cone" ? "줄" : "장"}` : `${d.plant} / ${d.petals}장`;
+    case "golden": return `★손 ${d.hand}cm / ★손목~팔꿈치 ${d.arm}cm (1 : ${Math.round(d.arm / d.hand * 100) / 100})${d.found1 ? ` / ${d.found1}` : ""}${d.found2 ? ` / ${d.found2}` : ""}`;
     case "pento": { const sv = Object.keys(pentoSolved(d)).map((i) => PUZZLES[i]?.name).filter(Boolean); return `${sv.length}개 완성 (${sv.join(", ")})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`; }
     case "fun": return (d.picks || []).map((id) => qTitle(A.config.questions.find((q) => q.id === id) || { kind: "", title: id })).join(" · ");
     case "scale": return priv?.value != null ? `${priv.value}점` : "제출";
@@ -540,6 +575,27 @@ $("rCsv").onclick = async () => {
   const url = URL.createObjectURL(blob);
   const el = document.createElement("a");
   el.href = url; el.download = "AI수학투어_오전오후_답.csv";
+  document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 20000);
+};
+
+// ★ 데이터 맵 숫자: 가족 한 줄에 12개
+$("rStar").onclick = async () => {
+  const [a] = await Promise.all([getDocs(collection(db, C.answers)), loadAllPriv()]);
+  const kindOf = Object.fromEntries(A.config.questions.map((q) => [q.id, q.kind]));
+  const teams = {};
+  a.forEach((d) => { const x = d.data(); const t = teams[x.teamId] = teams[x.teamId] || { session: x.session, label: x.label, m: {} }; t.m[kindOf[x.qid] || x.kind] = x.data; });
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const unit = (it) => typeof it.unit === "function" ? "장/줄" : it.unit;
+  const lines = [["시간대", "팀", "학교", "학생 이름", ...STAR_ITEMS.map((it) => `${it.label} (${unit(it)})`)].map(cell).join(",")];
+  Object.entries(teams).map(([id, t]) => ({ id, ...t })).sort(bySessLabel).forEach((t) => {
+    const v = starValues(t.m), pr = allPriv[t.id] || {};
+    lines.push([sessName(t.session), t.label, pr.school, pr.name, ...STAR_ITEMS.map((it) => v[it.k])].map(cell).join(","));
+  });
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const el = document.createElement("a");
+  el.href = url; el.download = "AI수학투어_데이터맵_숫자.csv";
   document.body.appendChild(el); el.click(); el.remove();
   setTimeout(() => URL.revokeObjectURL(url), 20000);
 };

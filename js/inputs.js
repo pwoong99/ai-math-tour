@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=2.32";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup } from "./questions.js?v=2.32";
-import { PUZZLES } from "./puzzles.js?v=2.32";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid } from "./widgets.js?v=2.32";
+import { esc, fileToJpeg, toast } from "./fb.js?v=2.42";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=2.42";
+import { PUZZLES } from "./puzzles.js?v=2.42";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=2.42";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -55,107 +55,333 @@ export const EULER_SVG = `
 
 const R = {};
 
-/* 1. 오일러와 한붓그리기 */
+// 작은 숫자 칸 (표·문장 속에 넣는 칸)
+const mini = (id, val, { w = 72, int = false, ph = "" } = {}) =>
+  `<input id="${id}" class="inp mini" style="width:${w}px" inputmode="${int ? "numeric" : "decimal"}" enterkeyhint="next" autocomplete="off" placeholder="${esc(ph)}" value="${val ?? ""}">`;
+const star = `<span class="star" title="데이터 맵에 쓰이는 숫자">★</span>`;
+// [[id, 이름, 단위, 자연수만?, 선택?]] 차례로 검사 → 첫 오류 글 또는 ""
+function checkAll(el, specs) {
+  for (const [id, label, unit, int, optional] of specs) {
+    const v = el.querySelector("#" + id).value;
+    if (optional && !String(v).trim()) continue;
+    const e = numCheck(v, label, unit, int);
+    if (e) { el.querySelector("#" + id).focus({ preventScroll: true }); return e; }
+  }
+  return "";
+}
+const numOf = (el, id) => { const v = el.querySelector("#" + id)?.value; return String(v ?? "").trim() === "" ? null : Number(v); };
+const r2 = (n) => Math.round(n * 100) / 100;
+const sec = (t, sub = "") => `<h4 class="sec">${t}${sub ? ` <small>${sub}</small>` : ""}</h4>`;
+
+/* 1-1. 오일러와 한붓그리기 */
 R.euler = (el, q, { prev }) => {
   let pick = prev?.possible || "";
-  el.innerHTML = `${EULER_SVG}
-    <label class="fld">한붓그리기가 가능할까요?</label>
+  el.innerHTML = `
+    ${sec("가. 한붓그리기로 따라 그려 보세요", "점을 차례로 눌러요")}
+    <div class="muted">같은 선을 두 번 지나지 않고 모든 선을 한 번에 그려요. 어느 점에서 출발하면 좋을까요?</div>
+    <div class="tr-a" style="margin-top:8px"></div><div class="tr-b" style="margin-top:14px"></div>
+    ${sec("나. 이 도형은 한붓그리기가 가능할까요?")}
+    ${EULER_SVG}
     <div class="choices"><button type="button" class="choice" data-v="가능">⭕ 가능</button><button type="button" class="choice" data-v="불가능">❌ 불가능</button></div>
     ${numField("e_odd", "홀수점은 몇 개인가요?", "개", prev?.odd, { int: true, ph: "예) 2" })}
     <label class="fld" for="e_why">이유를 설명해 보세요</label>
-    <textarea id="e_why" class="inp" rows="3" maxlength="200" placeholder="예) 홀수점이 ○개라서 …">${esc(prev?.reason || "")}</textarea>`;
+    <textarea id="e_why" class="inp" rows="3" maxlength="200" placeholder="예) 홀수점이 ○개라서 …">${esc(prev?.reason || "")}</textarea>
+    <div class="family-tip">가족 함께해요 ▶ "점마다 선이 몇 개 모였을까? 홀수점은 몇 개지?" 물어봐 주세요.</div>`;
+  const ta = eulerTracer(el.querySelector(".tr-a"), "a", prev?.draw?.a);
+  const tb = eulerTracer(el.querySelector(".tr-b"), "b", prev?.draw?.b);
   if (pick) el.querySelector(`[data-v="${pick}"]`)?.classList.add("on");
   choiceGroup(el, ".choice", (v) => pick = v);
   return {
     collect() {
-      if (!pick) return fail("가능한지 불가능한지 골라 주세요.");
+      const a = ta.get(), b = tb.get();
+      if (!a.ok || !b.ok) return fail(`가. 두 도형을 모두 한붓그리기로 그려 주세요. (${[a, b].filter((x) => x.ok).length} / 2 성공)`);
+      if (!pick) return fail("나. 가능한지 불가능한지 골라 주세요.");
       const odd = el.querySelector("#e_odd").value, why = el.querySelector("#e_why").value.trim();
       const e = numCheck(odd, "홀수점 개수", "개", true); if (e) return fail(e);
       if (why.length < 2) return fail("이유를 한 줄로 써 주세요.");
-      return { ok: true, data: { possible: pick, odd: Number(odd), reason: why } };
+      return { ok: true, data: { draw: { a: { path: a.path, edges: a.edges }, b: { path: b.path, edges: b.edges } }, possible: pick, odd: Number(odd), reason: why } };
     }
   };
 };
 
-/* 2. 스페이스 암호 해독 (주최측 문제) */
+/* 1-2. 스페이스 암호 해독 (5문제 + 창작 미션) */
+const NUMS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 R.cipher = (el, q, { prev, config }) => {
-  const cp = config.cipher || {};
-  const unknown = String(cp.key ?? "").trim() === "?" || String(cp.key ?? "").trim() === "";
-  el.innerHTML = `
-    <div class="cipher-box"><div class="muted" style="color:#c9d3ff">우주에서 온 비밀 편지</div>
-      <div class="ct">${esc(cp.text || "")}</div>
-      <div class="k">열쇠 k = ${unknown ? "? (찾아보세요!)" : esc(cp.key)}</div>
-      ${cp.hint ? `<div class="hint">${esc(cp.hint)}</div>` : ""}</div>
-    <div class="wh"></div>
-    ${unknown ? numField("c_k", "찾아낸 열쇠 k는?", "칸", prev?.k, { int: true, ph: "1 ~ 25" }) : ""}
-    <label class="fld" for="c_txt">해독한 원래 문장 <small>(영어 대문자로 자동으로 바뀌어요)</small></label>
-    <input id="c_txt" class="inp" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:2px;font-weight:800"
-      placeholder="예) HELLO" value="${esc(prev?.decoded || "")}">`;
-  cipherWheel(el.querySelector(".wh"), 0);
+  const cps = config.ciphers || [];
+  const ans = prev?.answers || [];
+  const unknownAt = (c) => !/^[A-Z]$/i.test(String(c.key || "").trim());
+  el.innerHTML = `<div class="wh"></div>
+    ${sec("암호 해독 미션", "우주에서 온 편지를 풀어요")}
+    ${cps.map((c, i) => `<div class="cp-row">
+      <div class="cp-top"><b>${unknownAt(c) ? "도전" : "문제"} ${NUMS[i] || i + 1}</b>
+        <span class="cp-key">열쇠 KEY <b>${unknownAt(c) ? "?" : esc(c.key.toUpperCase())}</b></span>
+        ${unknownAt(c) ? "" : `<button type="button" class="btn small gray" data-set="${keyShift(c.key)}">암호판 맞추기</button>`}</div>
+      <div class="cp-ct">${esc(c.text)}</div>
+      ${unknownAt(c) && c.hint ? `<div class="muted" style="margin:4px 0">${esc(c.hint)}</div>` : ""}
+      ${unknownAt(c) ? `<div class="row" style="gap:8px;margin:6px 0"><span style="font-weight:800">KEY =</span>
+        <input id="c_k${i}" class="inp mini up" style="width:64px" maxlength="1" autocapitalize="characters" autocomplete="off" value="${esc(prev?.keys?.[i] || "")}"></div>` : ""}
+      <input id="c_a${i}" class="inp up" autocomplete="off" autocapitalize="characters" placeholder="해독한 말 (원래 글자)" value="${esc(ans[i] || "")}"></div>`).join("")}
+    ${sec("창작 미션", "가족에게 전하는 응원 한마디")}
+    <div class="muted">응원 한마디(영어)를 암호판으로 바꿔 써요. 다른 가족이 「팀별 발자취」에서 풀어 볼 수 있어요!</div>
+    <div class="row" style="gap:8px;margin:10px 0 6px"><span style="font-weight:800">열쇠 KEY</span>
+      <input id="c_mk" class="inp mini up" style="width:64px" maxlength="1" autocapitalize="characters" autocomplete="off" value="${esc(prev?.my?.key || "")}"></div>
+    <input id="c_mt" class="inp up" autocomplete="off" autocapitalize="characters" placeholder="암호문 (예: MJHHT)" value="${esc(prev?.my?.text || "")}">
+    <div class="family-tip">가족 함께해요 ▶ "Key 글자가 뭐지?" 먼저 읽게 하고, 작은 원의 ▲(A)를 큰 원의 Key 글자에 맞췄는지 함께 확인해 주세요. 풀이 뒤에는 뜻이 통하는 문장인지 소리 내어 읽어 보세요.</div>`;
+  const wheel = cipherWheel(el.querySelector(".wh"), 0);
+  el.querySelectorAll("[data-set]").forEach((b) => b.onclick = () => { wheel.setK(Number(b.dataset.set)); el.querySelector(".wh").scrollIntoView({ block: "start", behavior: "smooth" }); });
+  const up = (s) => s.toUpperCase().replace(/\s+/g, " ").trim();
   return {
     collect() {
-      const t = el.querySelector("#c_txt").value.trim().toUpperCase().replace(/\s+/g, " ");
-      if (!t) return fail("해독한 문장을 써 주세요.");
-      if (!/^[A-Z ]+$/.test(t)) return fail("해독한 문장은 영어 알파벳과 띄어쓰기만 써 주세요.");
-      const data = { decoded: t };
-      if (unknown) {
-        const k = el.querySelector("#c_k").value;
-        const e = numCheck(k, "열쇠 k", "칸", true); if (e) return fail(e);
-        if (Number(k) < 1 || Number(k) > 25) return fail("열쇠 k는 1부터 25 사이의 수예요.");
-        data.k = Number(k);
+      const answers = [], keys = {};
+      for (let i = 0; i < cps.length; i++) {
+        const t = up(el.querySelector("#c_a" + i).value);
+        const nm = `${unknownAt(cps[i]) ? "도전" : "문제"} ${NUMS[i] || i + 1}`;
+        if (unknownAt(cps[i])) {
+          const k = up(el.querySelector("#c_k" + i).value);
+          if (!/^[A-Z]$/.test(k)) return fail(`${nm}의 열쇠 KEY를 알파벳 한 글자로 써 주세요.`);
+          keys[i] = k;
+        }
+        if (!t) return fail(`${nm}의 해독한 말을 써 주세요.`);
+        if (!/^[A-Z ]+$/.test(t)) return fail(`${nm}의 해독한 말은 영어 알파벳과 띄어쓰기만 써 주세요.`);
+        answers.push(t);
       }
+      const mk = up(el.querySelector("#c_mk").value), mt = up(el.querySelector("#c_mt").value);
+      if (!/^[A-Z]$/.test(mk)) return fail("창작 미션의 열쇠 KEY를 알파벳 한 글자로 써 주세요.");
+      if (!mt) return fail("창작 미션의 암호문을 써 주세요.");
+      if (!/^[A-Z ]+$/.test(mt)) return fail("창작 미션의 암호문은 영어 알파벳과 띄어쓰기만 써 주세요.");
+      return { ok: true, data: { answers, keys, my: { key: mk, text: mt } } };
+    }
+  };
+};
+
+/* 1-3. 라틴방진 스마트톡 */
+export const LATIN_PRACTICE = [
+  [0, 0, 1, 4, 0, 0, 0, 0, 1, 0, 2, 0, 2, 3, 4, 0],
+  [0, 3, 0, 0, 0, 1, 2, 0, 0, 0, 0, 4, 0, 0, 1, 2]
+];
+export const LATIN_COLORS = ["#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ec407a", "#6d4c41"];
+// 같은 줄(가로·세로)과 (box면) 2×2 네모 안에 겹치는 칸 번호들
+export function latinClash(g, box = true) {
+  const bad = new Set();
+  for (let i = 0; i < 16; i++) for (let j = i + 1; j < 16; j++) {
+    if (!g[i] || g[i] !== g[j]) continue;
+    const [ri, ci, rj, cj] = [i >> 2, i & 3, j >> 2, j & 3];
+    if (ri === rj || ci === cj || (box && (ri >> 1) === (rj >> 1) && (ci >> 1) === (cj >> 1))) { bad.add(i); bad.add(j); }
+  }
+  return bad;
+}
+// 4×4 칸: 칸을 누르고 아래 버튼으로 채워요
+function latinPad(holder, { givens = Array(16).fill(0), values, box, cell, padLabel, onChange = () => {} }) {
+  const v = values.slice();
+  let sel = -1;
+  const draw = () => {
+    const bad = latinClash(v, box), full = v.every(Boolean);
+    holder.innerHTML = `<div class="lgrid">${v.map((x, i) => {
+      const fixed = !!givens[i];
+      return `<button type="button" class="lc ${fixed ? "fx" : ""} ${i === sel ? "sel" : ""} ${bad.has(i) ? "bad" : ""} ${(i & 3) === 1 ? "bR" : ""} ${(i >> 2) === 1 ? "bB" : ""}" data-i="${i}" ${fixed ? "disabled" : ""}>${cell(x, fixed)}</button>`;
+    }).join("")}</div>
+      <div class="lpad">${[1, 2, 3, 4].map((n) => `<button type="button" class="lp" data-n="${n}" ${sel < 0 ? "disabled" : ""}>${padLabel(n)}</button>`).join("")}
+        <button type="button" class="lp" data-n="0" ${sel < 0 ? "disabled" : ""}>지우기</button></div>
+      <div class="lmsg ${bad.size ? "bad" : full ? "good" : ""}">${bad.size ? "빨간 칸: 같은 줄에 같은 것이 두 번 나왔어요." : full ? "✔ 규칙에 맞게 모두 채웠어요!" : sel < 0 ? "빈칸을 누른 뒤 아래 버튼을 골라요." : "아래 버튼을 골라 채워요."}</div>`;
+    holder.querySelectorAll(".lc").forEach((b) => b.onclick = () => { sel = Number(b.dataset.i); draw(); });
+    holder.querySelectorAll(".lp").forEach((b) => b.onclick = () => {
+      if (sel < 0) return;
+      v[sel] = Number(b.dataset.n);
+      const nx = v.findIndex((x, i) => i > sel && !x && !givens[i]);
+      if (v[sel] && nx >= 0) sel = nx;
+      draw(); onChange(v);
+    });
+  };
+  draw();
+  return { get values() { return v.slice(); }, set(nv) { nv.forEach((x, i) => { if (!givens[i]) v[i] = x; }); sel = -1; draw(); onChange(v); } };
+}
+R.latin = (el, q, { prev }) => {
+  let photo = prev?.photo || "";
+  const colors = (prev?.colors || ["#e53935", "#fdd835", "#43a047", "#1e88e5"]).slice();
+  let slot = 0;
+  el.innerHTML = `
+    ${sec("STEP 1. 숫자로 연습하기", "가로·세로·굵은 네모 안에 1~4가 한 번씩")}
+    <div class="lpair"><div class="lp1"></div><div class="lp2"></div></div>
+    ${sec("STEP 2. 색으로 바꾸어 설계하기", "스마트톡 설계")}
+    <div class="muted">1~4번에 쓸 색을 정해요. 번호를 누른 뒤 아래 색을 골라요.</div>
+    <div class="slots"></div><div class="swatches">${LATIN_COLORS.map((c) => `<button type="button" class="sw" data-c="${c}" style="background:${c}" aria-label="색"></button>`).join("")}</div>
+    <div class="muted" style="margin-top:10px">가로줄·세로줄마다 같은 색이 두 번 나오면 안 돼요.</div>
+    <div class="ldesign" style="margin-top:6px"></div>
+    <button type="button" class="btn small ghost" data-copy style="margin-top:6px">STEP 1 첫 번째 방진 그대로 색칠하기</button>
+    ${sec("메이커 미션", "스마트톡 조립 · 인증샷")}
+    <div class="ph"></div>
+    <label class="fld" for="l_name">우리 가족 스마트톡 이름 <small>(선택)</small></label>
+    <input id="l_name" class="inp" maxlength="30" placeholder="예) 알록달록 행운 거북이 톡" value="${esc(prev?.name || "")}">
+    <div class="family-tip">가족 함께해요 ▶ "같은 줄에 같은 색이 두 번 나오지 않았니?" 확인해 주세요. 가위·조립은 부모님이 함께 잡아 주세요(안전!).</div>`;
+  const pads = LATIN_PRACTICE.map((gv, k) => latinPad(el.querySelector(".lp" + (k + 1)), {
+    givens: gv, values: prev?.s1?.[k] || gv.slice(), box: true,
+    cell: (x) => x || "", padLabel: (n) => n
+  }));
+  const swatch = (n) => `<i style="background:${colors[n - 1]}"></i>`;
+  const design = latinPad(el.querySelector(".ldesign"), {
+    values: prev?.design || Array(16).fill(0), box: false,
+    cell: (x) => x ? swatch(x) : "", padLabel: (n) => `${swatch(n)}<small>${n}번</small>`
+  });
+  const drawSlots = () => {
+    el.querySelector(".slots").innerHTML = colors.map((c, i) => `<button type="button" class="slot ${i === slot ? "on" : ""}" data-s="${i}"><i style="background:${c}"></i>${i + 1}번</button>`).join("");
+    el.querySelectorAll(".slot").forEach((b) => b.onclick = () => { slot = Number(b.dataset.s); drawSlots(); });
+  };
+  el.querySelectorAll(".sw").forEach((b) => b.onclick = () => { colors[slot] = b.dataset.c; slot = (slot + 1) % 4; drawSlots(); design.set(design.values); });
+  el.querySelector("[data-copy]").onclick = () => {
+    const g = pads[0].values;
+    if (!g.every(Boolean) || latinClash(g).size) return toast("STEP 1 첫 번째 방진을 먼저 규칙에 맞게 다 채워 주세요.");
+    design.set(g);
+  };
+  drawSlots();
+  photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
+  return {
+    collect() {
+      for (let k = 0; k < 2; k++) {
+        const g = pads[k].values;
+        if (!g.every(Boolean)) return fail(`STEP 1의 ${k + 1}번째 방진 빈칸을 모두 채워 주세요.`);
+        if (latinClash(g).size) return fail(`STEP 1의 ${k + 1}번째 방진에 같은 숫자가 겹친 줄이 있어요. 빨간 칸을 고쳐 주세요.`);
+      }
+      if (new Set(colors).size < 4) return fail("STEP 2에서 1~4번에 서로 다른 색 4가지를 정해 주세요.");
+      const d = design.values;
+      if (!d.every(Boolean)) return fail("STEP 2 설계판의 칸을 모두 색칠해 주세요.");
+      if (latinClash(d, false).size) return fail("STEP 2 설계판에서 같은 줄에 같은 색이 겹쳤어요. 빨간 칸을 고쳐 주세요.");
+      if (!photo) return fail("완성한 스마트톡 인증샷을 올려 주세요.");
+      return { ok: true, data: { s1: pads.map((p) => p.values), colors, design: d, photo, name: el.querySelector("#l_name").value.trim() } };
+    }
+  };
+};
+
+/* 2-1. 동물 안내판 속 숫자 보물 찾기 */
+export const SIGN_FIELDS = [
+  ["fox", "귀가 큰 사막여우", "모래사막에 깊은 굴을 파는 야행성", [["foxL1", "몸길이", "cm"], ["foxL2", "", "cm"], ["foxW", "몸무게 약", "kg"]]],
+  ["sul", "설가타 육지거북", "세계에서 세 번째로 크게 자라는 육지거북", [["sulL1", "등갑길이", "cm"], ["sulL2", "", "cm"], ["sulA", "최대 수명", "년"]]],
+  ["ald", "알다브라 코끼리거북", "최대 255년 산 기록이 있는 장수 거북", [["aldA1", "수명", "년"], ["aldA2", "", "년"], ["aldH", "땅에서", "m 위 잎도 먹어요"]]]
+];
+R.sign = (el, q, { prev }) => {
+  const p = prev || {};
+  el.innerHTML = SIGN_FIELDS.map(([k, name, feat, f]) => `<div class="sign-card">
+      <div class="sign-h"><b>${name}</b><small>${feat}</small></div>
+      <div class="sign-l">${f[0][1]} ${mini("s_" + f[0][0], p[f[0][0]], { w: 64 })} ~ ${mini("s_" + f[1][0], p[f[1][0]], { w: 64 })} ${f[0][2]}</div>
+      <div class="sign-l">${f[2][1]} ${mini("s_" + f[2][0], p[f[2][0]], { w: 64 })} ${f[2][2]}</div></div>`).join("") +
+    `<div class="family-tip">가족 함께해요 ▶ 숫자만 읽고 끝내지 말고 "내 키·몸무게와 비교하면 어느 정도일까?" 물어봐 주세요.</div>`;
+  return {
+    collect() {
+      const specs = SIGN_FIELDS.flatMap(([, name, , f]) => f.map(([id, lb, u]) => ["s_" + id, `${name.split(" ").pop()} ${lb || f[0][1] + "(끝)"}`, u.split(" ")[0], false]));
+      const e = checkAll(el, specs); if (e) return fail(e);
+      const data = {};
+      SIGN_FIELDS.forEach(([, , , f]) => f.forEach(([id]) => data[id] = numOf(el, "s_" + id)));
       return { ok: true, data };
     }
   };
 };
 
-/* 3. 라틴방진 스마트톡 (사진) */
-R.latin = (el, q, { prev }) => {
-  let photo = prev?.photo || "";
-  el.innerHTML = `<div class="ph"></div>
-    <label class="fld" for="l_name">우리 가족 스마트톡 이름 <small>(선택)</small></label>
-    <input id="l_name" class="inp" maxlength="30" placeholder="예) 알록달록 행운 거북이 톡" value="${esc(prev?.name || "")}">`;
-  photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
-  return {
-    collect() {
-      if (!photo) return fail("스마트톡 사진을 올려 주세요.");
-      return { ok: true, data: { photo, name: el.querySelector("#l_name").value.trim() } };
-    }
-  };
-};
-
-/* 4. 동물 친구 웰빙 계산기 */
+/* 2-2. 동물 친구 웰빙 계산기 */
 R.food = (el, q, { prev }) => {
-  el.innerHTML = `<div class="calc" style="text-align:center;font-size:20px">1 : 150 = 4 : □</div>
-    ${numField("f_v", "사막여우 4마리의 하루 먹이량", "g", prev?.value, { ph: "숫자만" })}`;
-  return {
-    collect() {
-      const v = el.querySelector("#f_v").value;
-      const e = numCheck(v, "먹이량", "g", false); if (e) return fail(e);
-      return { ok: true, data: { value: Number(v) } };
-    }
-  };
-};
-
-/* 5. 내 보폭으로 재어보는 산책로 */
-R.stride = (el, q, { prev }) => {
+  const p = prev || {};
   el.innerHTML = `
-    ${numField("s_step", "학생의 평균 1보 길이 (4보 길이 ÷ 4)", "cm", prev?.step, { ph: "예) 115" })}
-    ${numField("s_walk", "내 보폭으로 계산한 구간 거리 (보수 × 1보)", "m", prev?.walk, { ph: "예) 120" })}
-    ${numField("s_gps", "스마트폰 GPS 앱으로 잰 같은 구간 거리", "m", prev?.gps, { ph: "예) 125" })}`;
+    ${sec("① 비례표 만들기", "사막여우 1마리의 하루 먹이는 150g")}
+    <div class="ptable">
+      <div class="h">여우 수(마리)</div><div>1</div><div>2</div><div>4</div><div>8</div><div>${mini("f_n7", p.n7, { w: 52, int: true })}</div>
+      <div class="h">먹이(g)</div><div>150</div><div>${mini("f_g2", p.g2, { w: 52 })}</div><div>${mini("f_g4", p.g4, { w: 52 })}</div><div>${mini("f_g8", p.g8, { w: 52 })}</div><div>1,050</div>
+      <div class="h">먹이 ÷ 마리 수</div><div class="dv" data-d="1">150</div><div class="dv" data-d="2"></div><div class="dv" data-d="4"></div><div class="dv" data-d="8"></div><div class="dv" data-d="n"></div>
+    </div>
+    <div class="qline">(1) 4마리가 함께 지낼 때 하루 먹이는? ${star}<div class="calc">1 : 150 = 4 : ${mini("f_q1", p.q1, { w: 80 })} g</div></div>
+    <div class="qline">(2) 먹이 1,050g으로는 사막여우 몇 마리의 하루치를 줄 수 있을까?<div class="calc">1 : 150 = □ : 1,050 → ${mini("f_q2", p.q2, { w: 64, int: true })} 마리</div></div>
+    <label class="fld" for="f_why">(3) 표 맨 아랫줄(먹이 ÷ 마리 수)은 모두 같아요. 왜 같을까요?</label>
+    <textarea id="f_why" class="inp" rows="2" maxlength="200" placeholder="예) 한 마리당 먹는 양이 …">${esc(p.why || "")}</textarea>
+    ${sec("② 비례배분", "새 먹이 500g을 과일 : 곡식 = 3 : 2 로 섞어요")}
+    <div class="calc">과일 = 500 × 3/5 = ${mini("f_fr", p.fruit, { w: 72 })} g</div>
+    <div class="calc">곡식 = 500 × 2/5 = ${mini("f_gr", p.grain, { w: 72 })} g</div>
+    <div class="calc">과일은 전체의 ${mini("f_fp", p.fruitPct, { w: 64 })} %</div>
+    ${sec("③ 수명 비교", "알다브라 코끼리거북의 최대 기록 255년")}
+    <div class="calc">내 나이 ${star} 만 ${mini("f_age", p.age, { w: 56, int: true })} 세</div>
+    <div class="calc">내 나이 : 255 = 1 : □ → 거북은 나의 약 ${mini("f_x", p.times, { w: 64 })} 배</div>
+    <div class="calc">거북 기록에서 나는 약 ${mini("f_pct", p.pct, { w: 64 })} %를 살았어요</div>
+    <label class="fld" for="f_talk">생각 넓히기 (가족 토론) <small>선택</small></label>
+    <div class="muted">우리 A에는 여우 4마리에게 600g, 우리 B에는 8마리에게 1,200g을 줘요. 어느 우리 여우가 더 배불리 먹을까요?</div>
+    <textarea id="f_talk" class="inp" rows="2" maxlength="200" style="margin-top:6px" placeholder="우리 가족 생각">${esc(p.talk || "")}</textarea>`;
+  const live = () => {
+    const g = { 2: numOf(el, "f_g2"), 4: numOf(el, "f_g4"), 8: numOf(el, "f_g8") };
+    [2, 4, 8].forEach((n) => el.querySelector(`[data-d="${n}"]`).textContent = g[n] != null && Number.isFinite(g[n]) ? r2(g[n] / n) : "");
+    const n7 = numOf(el, "f_n7");
+    el.querySelector('[data-d="n"]').textContent = n7 ? r2(1050 / n7) : "";
+  };
+  el.querySelectorAll(".ptable input").forEach((i) => i.addEventListener("input", live));
+  live();
   return {
     collect() {
-      const v = ["s_step", "s_walk", "s_gps"].map((id) => el.querySelector("#" + id).value);
-      const names = [["1보 길이", "cm"], ["보폭 거리", "m"], ["GPS 거리", "m"]];
-      for (let i = 0; i < 3; i++) { const e = numCheck(v[i], names[i][0], names[i][1], false); if (e) return fail(e); }
-      return { ok: true, data: { step: Number(v[0]), walk: Number(v[1]), gps: Number(v[2]) } };
+      const e = checkAll(el, [["f_g2", "2마리 먹이", "g"], ["f_g4", "4마리 먹이", "g"], ["f_g8", "8마리 먹이", "g"], ["f_n7", "1,050g일 때 여우 수", "마리", true],
+        ["f_q1", "(1) 4마리의 하루 먹이", "g"], ["f_q2", "(2) 여우 수", "마리", true]]);
+      if (e) return fail(e);
+      const why = el.querySelector("#f_why").value.trim();
+      if (why.length < 2) return fail("(3) 아랫줄이 모두 같은 까닭을 한 줄로 써 주세요.");
+      const e2 = checkAll(el, [["f_fr", "과일", "g"], ["f_gr", "곡식", "g"], ["f_fp", "과일 비율", "%"], ["f_age", "내 나이", "세", true], ["f_x", "거북은 나의 몇 배", "배"], ["f_pct", "내가 산 비율", "%"]]);
+      if (e2) return fail(e2);
+      if (!(numOf(el, "f_age") > 0)) return fail("내 나이를 1 이상의 수로 써 주세요.");
+      return {
+        ok: true, data: {
+          g2: numOf(el, "f_g2"), g4: numOf(el, "f_g4"), g8: numOf(el, "f_g8"), n7: numOf(el, "f_n7"),
+          q1: numOf(el, "f_q1"), q2: numOf(el, "f_q2"), why, fruit: numOf(el, "f_fr"), grain: numOf(el, "f_gr"), fruitPct: numOf(el, "f_fp"),
+          age: numOf(el, "f_age"), times: numOf(el, "f_x"), pct: numOf(el, "f_pct"), talk: el.querySelector("#f_talk").value.trim()
+        }
+      };
     }
   };
 };
 
-/* 6. 방형구법과 국화꽃 송이 맞히기 */
+/* 3-1. 내 보폭으로 재어보는 산책로 */
+R.stride = (el, q, { prev }) => {
+  const p = prev || {};
+  const who = [["me", "학생(나)", false], ["par", "부모님", false], ["sib", "동생(선택)", true]];
+  let photo = p.photo || "";
+  el.innerHTML = `
+    ${sec("내 1보 재기", "5보(10걸음) 걸은 거리 ÷ 5 = 1보")}
+    <div class="stable"><div class="h">측정 대상</div><div class="h">5보 길이</div><div class="h">1보 길이(÷5)</div>
+      ${who.map(([k, n]) => `<div class="h">${n}${k === "me" ? " " + star : ""}</div>
+        <div>${mini("st_" + k + "5", p[k + "5"], { w: 70 })} cm</div><div>${mini("st_" + k + "1", p[k + "1"], { w: 70 })} cm</div>`).join("")}</div>
+    <div class="muted st-hint"></div>
+    ${sec("어린이동물원 ~ 스페이스 허브 가는 길 측정해 보기")}
+    <div class="qline">1. 이 구간을 내 보폭으로 걸었어요 ${star}
+      <div class="calc">${mini("st_steps", p.steps, { w: 72, int: true })} 보 × 1보 <span class="st-one">□</span> cm = ${mini("st_walk", p.walk, { w: 80 })} m</div></div>
+    <div class="qline">2. 지도 앱(네이버지도·카카오맵)의 위성사진에서 점을 이어 잰 거리 ${star}
+      <div class="calc">${mini("st_map", p.map, { w: 80 })} m</div></div>
+    <div class="ph"></div>
+    <div class="qline">3. AI·디지털과의 비교: 내 보폭으로 구한 거리와 지도 앱 거리의 차이
+      <div class="calc">${mini("st_diff", p.diff, { w: 80 })} m</div></div>
+    <label class="fld" for="st_why">오차가 생긴 까닭을 가족과 이야기해요</label>
+    <textarea id="st_why" class="inp" rows="2" maxlength="200" placeholder="우리 가족 생각">${esc(p.why || "")}</textarea>
+    <div class="family-tip">가족 함께해요 ▶ 5보를 걷는 동안 학생은 앞을 보고, 부모님이 시작·끝 뒤꿈치 위치를 표시해 주세요.</div>`;
+  const live = () => {
+    const h = who.map(([k, n]) => { const v = numOf(el, `st_${k}5`); return v ? `${n.replace("(선택)", "")} ${r2(v)} ÷ 5 = ${r2(v / 5)}cm` : ""; }).filter(Boolean);
+    el.querySelector(".st-hint").textContent = h.length ? "계산 도우미: " + h.join(" · ") : "";
+    const one = numOf(el, "st_me1");
+    el.querySelector(".st-one").textContent = one ?? "□";
+  };
+  el.querySelectorAll("input").forEach((i) => i.addEventListener("input", live));
+  live();
+  const ph = el.querySelector(".ph");
+  ph.innerHTML = `<div class="muted" style="margin:-2px 0 4px">지도 앱 화면 사진 <small>(선택)</small></div><div class="phx"></div>`;
+  photoPicker(ph.querySelector(".phx"), photo, (u) => photo = u);
+  return {
+    collect() {
+      const sib = ["st_sib5", "st_sib1"].map((id) => el.querySelector("#" + id).value.trim());
+      const e = checkAll(el, [["st_me5", "학생 5보 길이", "cm"], ["st_me1", "학생 1보 길이", "cm"], ["st_par5", "부모님 5보 길이", "cm"], ["st_par1", "부모님 1보 길이", "cm"],
+        ["st_sib5", "동생 5보 길이", "cm", false, true], ["st_sib1", "동생 1보 길이", "cm", false, true],
+        ["st_steps", "구간 보수", "보", true], ["st_walk", "보폭으로 잰 거리", "m"], ["st_map", "지도 앱 거리", "m"], ["st_diff", "거리 차이", "m"]]);
+      if (e) return fail(e);
+      if (!!sib[0] !== !!sib[1]) return fail("동생도 재었다면 5보 길이와 1보 길이를 모두 써 주세요.");
+      const why = el.querySelector("#st_why").value.trim();
+      if (why.length < 2) return fail("오차가 생긴 까닭을 한 줄로 써 주세요.");
+      const d = { photo };
+      ["me5", "me1", "par5", "par1", "sib5", "sib1", "steps", "walk", "map", "diff"].forEach((k) => d[k] = numOf(el, "st_" + k));
+      d.why = why;
+      return { ok: true, data: d };
+    }
+  };
+};
+
+/* 3-2. 방형구법과 AI로 국화꽃 세기 */
 R.quadrat = (el, q, { prev, config }) => {
-  const area = Number(config.quadratArea) || 20;
   const st = {
     photo: prev?.photo || "", aiCount: prev?.aiCount ?? "", aiPoints: prev?.aiPoints || [],
     aiManual: !!prev?.aiManual, basis: prev?.basis || "", aiBy: prev?.aiBy || ""
@@ -164,26 +390,21 @@ R.quadrat = (el, q, { prev, config }) => {
     <div class="steps">
       <div class="step"><h5>방형구 사진 올리기</h5>
         <div class="q-photo"></div></div>
-      <div class="step"><h5>AI가 센 꽃 수</h5><div class="q-ai"></div></div>
-      <div class="step"><h5>눈으로 직접 센 꽃 수</h5>
+      <div class="step"><h5>AI가 센 꽃 수 <span class="star">★</span></h5><div class="q-ai"></div></div>
+      <div class="step"><h5>내가 직접 센 꽃 수 <span class="star">★</span></h5>
         ${numField("q_eye", "우리 가족이 직접 센 꽃 수", "송이", prev?.eye, { int: true, ph: "예) 12" })}</div>
       <div class="step"><h5>1㎡에는 몇 송이?</h5>
         <div class="muted">20cm × 20cm 방형구 25개 = 1m × 1m = 1㎡ 예요. 어떤 수로 계산할까요?</div>
         <div class="choices" style="margin:8px 0"><button type="button" class="choice" data-v="eye">👀 내가 센 수</button><button type="button" class="choice" data-v="ai">🤖 AI가 센 수</button></div>
         <div class="calc q-f1">(기준 수) × 25 = □</div>
         ${numField("q_m2", "1㎡당 꽃 수", "송이", prev?.perM2, { int: true })}</div>
-      <div class="step"><h5>꽃밭 전체는 몇 송이?</h5>
-        <div class="calc">선생님이 알려 준 꽃밭 넓이: <b>${area}㎡</b></div>
-        <div class="calc q-f2">(1㎡당 꽃 수) × ${area} = □</div>
-        ${numField("q_total", "꽃밭 전체 꽃 수 어림", "송이", prev?.total, { int: true })}</div>
-    </div>`;
+    </div>
+    <div class="family-tip">가족 함께해요 ▶ 방형구 사진은 부모님이, 수직 촬영인지 학생이 확인해요. AI는 어디까지나 보조 역할! 최종 확인은 반드시 내가 직접 해요.</div>`;
   const $ = (s) => el.querySelector(s);
   if (st.basis) $(`[data-v="${st.basis}"]`)?.classList.add("on");
   const formula = () => {
     const base = st.basis === "ai" ? st.aiCount : st.basis === "eye" ? $("#q_eye").value : "";
     $(".q-f1").textContent = `${base !== "" && base != null ? base : "(기준 수)"} × 25 = □`;
-    const m2 = $("#q_m2").value;
-    $(".q-f2").textContent = `${m2 || "(1㎡당 꽃 수)"} × ${area} = □`;
   };
   choiceGroup(el, ".choice", (v) => { st.basis = v; formula(); });
   $("#q_eye").oninput = formula; $("#q_m2").oninput = formula;
@@ -255,42 +476,135 @@ R.quadrat = (el, q, { prev, config }) => {
       if (crop) return fail("사진 영역을 정한 뒤 「AI에게 세어 달라고 하기」를 눌러 주세요.");
       if (!st.photo) return fail("방형구 사진을 올려 주세요.");
       let e = numCheck(st.aiCount, "AI가 센 꽃 수", "송이", true); if (e) return fail(e);
-      const eye = $("#q_eye").value, m2 = $("#q_m2").value, total = $("#q_total").value;
+      const eye = $("#q_eye").value, m2 = $("#q_m2").value;
       e = numCheck(eye, "직접 센 꽃 수", "송이", true); if (e) return fail(e);
       if (!st.basis) return fail("1㎡ 계산에 쓸 수(내가 센 수 / AI가 센 수)를 골라 주세요.");
       e = numCheck(m2, "1㎡당 꽃 수", "송이", true); if (e) return fail(e);
-      e = numCheck(total, "꽃밭 전체 꽃 수", "송이", true); if (e) return fail(e);
       return {
         ok: true, data: {
           photo: st.photo, aiCount: Number(st.aiCount), aiPoints: st.aiPoints.slice(0, 400), aiManual: st.aiManual,
-          eye: Number(eye), basis: st.basis, perM2: Number(m2), total: Number(total), area, aiBy: st.aiManual ? "manual" : "gemini"
+          eye: Number(eye), basis: st.basis, perM2: Number(m2), aiBy: st.aiManual ? "manual" : "gemini"
         }
       };
     }
   };
 };
 
-/* 7. 피보나치 */
-R.fibo = (el, q, { prev }) => {
-  let pick = prev?.petals || "";
+/* 3-3. 핸드폰으로 꽃밭 넓이 재기 */
+R.area = (el, q, { prev, mine }) => {
+  const p = prev || {};
+  const one = mine?.stride?.me1;          // 3-1에서 잰 내 1보
+  const perM2 = p.perM2 ?? mine?.quadrat?.perM2; // 3-2에서 구한 1㎡당 꽃 수
+  let photo = p.photo || "";
   el.innerHTML = `
-    <label class="fld" for="fb_p">식물 인식 AI로 찾은 꽃(식물) 이름</label>
-    <input id="fb_p" class="inp" maxlength="30" placeholder="예) 코스모스" value="${esc(prev?.plant || "")}">
-    <label class="fld">꽃잎은 몇 장인가요?</label>
-    <div class="choices">${["3", "5", "8", "13", "기타"].map((v) => `<button type="button" class="choice" data-v="${v}">${v === "기타" ? "기타" : v + "장"}</button>`).join("")}</div>`;
-  if (pick) el.querySelector(`[data-v="${pick}"]`)?.classList.add("on");
-  choiceGroup(el, ".choice", (v) => pick = v);
+    ${sec("방법 ① 측정 앱", "네 모서리를 차례로 콕!")}
+    <div class="calc">${mini("a_app", p.app, { w: 90 })} ㎡ ${star}</div>
+    ${sec("방법 ② 지도 앱 면적 재기", "꽃밭 둘레를 점으로 연결 · 선택")}
+    <div class="calc">${mini("a_map", p.map, { w: 90 })} ㎡</div>
+    ${sec("방법 ③ 보폭 곱하기", `보 수 × 1보 = 길이(m)${one ? ` · 내 1보 ${one}cm` : ""}`)}
+    <div class="calc">가로 ${mini("a_ws", p.ws, { w: 56, int: true })} 보 → ${mini("a_wm", p.wm, { w: 70 })} m</div>
+    <div class="calc">세로 ${mini("a_hs", p.hs, { w: 56, int: true })} 보 → ${mini("a_hm", p.hm, { w: 70 })} m</div>
+    <div class="calc">넓이 <span class="a-f">□ m × □ m</span> = ${mini("a_st", p.stride, { w: 80 })} ㎡ ${star}</div>
+    <div class="muted" style="margin-bottom:6px">우리 가족이 정한 꽃밭 사진 <small>(선택)</small></div><div class="ph"></div>
+    ${sec("꽃밭 전체의 꽃은 몇 송이?", "방형구법 ④")}
+    <div class="calc">1㎡당 꽃 수 ${mini("a_pm", perM2, { w: 70, int: true })} 송이 × 넓이 <span class="a-app">□</span>㎡</div>
+    <div class="calc">= 약 ${mini("a_tot", p.total, { w: 100, int: true })} 송이</div>
+    <div class="muted">1㎡당 꽃 수는 「방형구법과 AI로 국화꽃 세기」에서 구한 값이에요. 넓이는 측정 앱으로 잰 값을 써요.</div>
+    <div class="family-tip">가족 함께해요 ▶ 보폭을 잴 때는 같은 속도로 걷고 시작·끝에 표시해 주세요.</div>`;
+  const live = () => {
+    const w = numOf(el, "a_wm"), h = numOf(el, "a_hm");
+    el.querySelector(".a-f").textContent = `${w ?? "□"} m × ${h ?? "□"} m`;
+    el.querySelector(".a-app").textContent = numOf(el, "a_app") ?? "□";
+  };
+  el.querySelectorAll("input").forEach((i) => i.addEventListener("input", live));
+  live();
+  photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
   return {
     collect() {
-      const p = el.querySelector("#fb_p").value.trim();
-      if (!p) return fail("찾은 식물 이름을 써 주세요.");
-      if (!pick) return fail("꽃잎 수를 골라 주세요.");
-      return { ok: true, data: { plant: p, petals: pick } };
+      const e = checkAll(el, [["a_app", "측정 앱 넓이", "㎡"], ["a_map", "지도 앱 넓이", "㎡", false, true], ["a_ws", "가로 보 수", "보", true], ["a_wm", "가로 길이", "m"],
+        ["a_hs", "세로 보 수", "보", true], ["a_hm", "세로 길이", "m"], ["a_st", "보폭으로 잰 넓이", "㎡"], ["a_pm", "1㎡당 꽃 수", "송이", true], ["a_tot", "꽃밭 전체 꽃 수", "송이", true]]);
+      if (e) return fail(e);
+      return {
+        ok: true, data: {
+          app: numOf(el, "a_app"), map: numOf(el, "a_map"), ws: numOf(el, "a_ws"), wm: numOf(el, "a_wm"), hs: numOf(el, "a_hs"), hm: numOf(el, "a_hm"),
+          stride: numOf(el, "a_st"), perM2: numOf(el, "a_pm"), total: numOf(el, "a_tot"), photo
+        }
+      };
     }
   };
 };
 
-/* 8. 펜토미노 */
+/* 4-1. 자연 속 피보나치 수 */
+export const FIBO_ROWS = [["3", "붓꽃, 아이리스"], ["5", "야생장미, 무궁화, 동백, 패랭이, 채송화"], ["8", "모란, 코스모스"], ["13", "금잔화, 금불초"]];
+R.fibo = (el, q, { prev }) => {
+  const p = prev || {};
+  let type = p.starType || "";
+  el.innerHTML = `
+    ${sec("한국정원에서 내가 찾은 피보나치 식물", "식물 인식 AI 활용")}
+    ${FIBO_ROWS.map(([n, ex]) => `<div class="fb-row"><div class="fb-n">${n}장</div><div class="grow">
+      <div class="muted" style="font-size:13px">예) ${ex}</div>
+      <input id="fb_${n}" class="inp" maxlength="30" placeholder="찾은 식물 이름" value="${esc(p.plants?.[n] || "")}"></div></div>`).join("")}
+    <div class="fb-row"><div class="fb-n" style="font-size:15px">솔방울<br><small>(대체)</small></div><div class="grow">
+      <div class="muted" style="font-size:13px">비늘이 만드는 나선은 이웃한 피보나치 수(5와 8, 8과 13 등)인 경우가 많아요. 땅에 떨어진 것을 눈으로만 세어요.</div>
+      <div class="calc" style="margin-top:6px">시계 방향 ${mini("fb_cw", p.cw, { w: 54, int: true })} 줄, 반시계 방향 ${mini("fb_ccw", p.ccw, { w: 54, int: true })} 줄</div></div></div>
+    ${sec(`데이터 맵에 쓸 숫자 ${star}`)}
+    <div class="choices" style="grid-template-columns:1fr 1fr"><button type="button" class="choice" data-v="petal">🌸 내가 센 꽃잎 수</button><button type="button" class="choice" data-v="cone">🌰 솔방울 나선 수</button></div>
+    <div class="calc" style="margin-top:8px">${mini("fb_star", p.star, { w: 70, int: true })} <span class="fb-u">${type === "cone" ? "줄" : "장"}</span></div>
+    <div class="muted">꽃이 없으면 솔방울 나선 수를 써요.</div>
+    <div class="family-tip">가족 함께해요 ▶ 꽃잎이 3·5·8·13이 아니어도 괜찮아요. 가까운 수를 찾으면 성공! 11월이라 꽃잎이 많이 떨어졌다면 솔방울 나선을 활용해요.</div>`;
+  if (type) el.querySelector(`[data-v="${type}"]`)?.classList.add("on");
+  choiceGroup(el, ".choice", (v) => { type = v; el.querySelector(".fb-u").textContent = v === "cone" ? "줄" : "장"; });
+  return {
+    collect() {
+      const plants = {};
+      FIBO_ROWS.forEach(([n]) => { const v = el.querySelector("#fb_" + n).value.trim(); if (v) plants[n] = v; });
+      const e = checkAll(el, [["fb_cw", "시계 방향 줄 수", "줄", true, true], ["fb_ccw", "반시계 방향 줄 수", "줄", true, true]]);
+      if (e) return fail(e);
+      const cw = numOf(el, "fb_cw"), ccw = numOf(el, "fb_ccw");
+      if (!Object.keys(plants).length && (cw == null || ccw == null)) return fail("피보나치 수가 적용된 식물 이름을 하나 이상 쓰거나, 솔방울 나선 수를 두 방향 모두 써 주세요.");
+      if (!type) return fail("데이터 맵에 쓸 숫자가 꽃잎 수인지 솔방울 나선 수인지 골라 주세요.");
+      const e2 = checkAll(el, [["fb_star", type === "cone" ? "솔방울 나선 수" : "꽃잎 수", type === "cone" ? "줄" : "장", true]]); if (e2) return fail(e2);
+      return { ok: true, data: { plants, cw, ccw, starType: type, star: numOf(el, "fb_star") } };
+    }
+  };
+};
+
+/* 4-1. 황금비율자로 황금비 찾기 */
+R.golden = (el, q, { prev }) => {
+  const p = prev || {};
+  el.innerHTML = `
+    ${sec("① 가족 몸에서 황금비 찾기", "손의 길이와 손목~팔꿈치 길이")}
+    ${numField("g_hand", "내 손 길이 ★", "cm", p.hand, { ph: "예) 15" })}
+    ${numField("g_arm", "내 손목~팔꿈치 길이 ★", "cm", p.arm, { ph: "예) 24" })}
+    <div class="gold-box"></div>
+    ${sec("② 정자·담장·나뭇잎에서 찾기", "선택")}
+    <label class="fld" for="g_f1">내가 찾은 황금비 ①</label>
+    <input id="g_f1" class="inp" maxlength="40" placeholder="예) 얼굴 가로 : 세로" value="${esc(p.found1 || "")}">
+    <label class="fld" for="g_f2">내가 찾은 황금비 ②</label>
+    <input id="g_f2" class="inp" maxlength="40" placeholder="예) 부용정 창문의 가로 : 세로" value="${esc(p.found2 || "")}">
+    <div class="muted" style="margin-top:8px">황금비 예시: 얼굴 가로와 세로 · 턱~코 밑과 코 밑~눈썹 · 손과 손목~팔꿈치 · 배꼽~머리끝과 배꼽~발끝 · 손가락 마디</div>
+    <div class="family-tip">가족 함께해요 ▶ 서로의 몸을 잴 때는 먼저 동의를 구하고 웃으며 재요.</div>`;
+  const live = () => {
+    const h = numOf(el, "g_hand"), a = numOf(el, "g_arm"), box = el.querySelector(".gold-box");
+    if (!(h > 0 && a > 0)) { box.innerHTML = `<div class="muted">두 길이를 쓰면 비를 계산해 줘요.</div>`; return; }
+    const r = a / h, pos = Math.max(0, Math.min(100, (r - 1) / 1.2 * 100)), g = (1.618 - 1) / 1.2 * 100;
+    box.innerHTML = `<div class="calc" style="text-align:center">손 : 손목~팔꿈치 = 1 : <b>${r2(r)}</b></div>
+      <div class="gauge"><i class="gold" style="left:${g}%"></i><i class="me" style="left:${pos}%"></i></div>
+      <div class="gauge-l"><span>1.0</span><span style="color:#c9a227">황금비 1.618</span><span>2.2</span></div>
+      <div class="muted" style="text-align:center">${Math.abs(r - 1.618) < 0.15 ? "✨ 황금비에 아주 가까워요!" : "황금비와 얼마나 다른지 살펴봐요."}</div>`;
+  };
+  el.querySelectorAll("#g_hand,#g_arm").forEach((i) => i.addEventListener("input", live));
+  live();
+  return {
+    collect() {
+      const e = checkAll(el, [["g_hand", "손 길이", "cm"], ["g_arm", "손목~팔꿈치 길이", "cm"]]); if (e) return fail(e);
+      if (!(numOf(el, "g_hand") > 0)) return fail("손 길이는 0보다 커야 해요.");
+      return { ok: true, data: { hand: numOf(el, "g_hand"), arm: numOf(el, "g_arm"), found1: el.querySelector("#g_f1").value.trim(), found2: el.querySelector("#g_f2").value.trim() } };
+    }
+  };
+};
+
+/* 4-2. 펜토미노 */
 R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) => {
   const st = pentoSettings(config);
   const { list, need, mode } = st;
@@ -416,7 +730,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
   };
 };
 
-/* 9. 가장 재미있었던 활동 (여러 개) */
+/* 마무리: 가장 재미있었던 활동 (여러 개) */
 R.fun = (el, q, { prev, config }) => {
   const opts = funOptions(config);
   const picks = new Set(prev?.picks || []);
@@ -440,7 +754,7 @@ R.fun = (el, q, { prev, config }) => {
   };
 };
 
-/* 10. 만족도 (관리자만) */
+/* 마무리: 만족도 (관리자만) */
 const FACES = [["😞", "전혀 그렇지 않다"], ["🙁", "그렇지 않다"], ["😐", "보통이다"], ["🙂", "그렇다"], ["😍", "매우 그렇다"]];
 R.scale = (el, q, { teamId }) => {
   const key = `mt_scale_${teamId}_${q.id}`;
@@ -461,7 +775,7 @@ R.scale = (el, q, { teamId }) => {
   };
 };
 
-/* 11. 소감 한마디 */
+/* 마무리: 소감 한마디 */
 R.comment = (el, q, { prev }) => {
   el.innerHTML = `<textarea id="cm" class="inp" rows="4" maxlength="120" placeholder="좋았던 점, 기억에 남는 장면을 남겨 주세요.">${esc(prev?.text || "")}</textarea>
     <div class="muted" style="text-align:right"><span class="n">0</span> / 120</div>`;

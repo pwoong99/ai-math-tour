@@ -3,11 +3,13 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.32";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon } from "./questions.js?v=2.32";
-import { renderInput } from "./inputs.js?v=2.32";
-import { renderPeek } from "./peek.js?v=2.32";
-import { drawCertificate, canvasToPng } from "./cert.js?v=2.32";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=2.42";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=2.42";
+import { renderInput } from "./inputs.js?v=2.42";
+import { renderPeek } from "./peek.js?v=2.42";
+import { drawCertificate, canvasToPng } from "./cert.js?v=2.42";
+import { drawDataMap, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=2.42";
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -34,6 +36,8 @@ function show(v) {
 const qs = () => visibleQs(S.config);
 const solved = (q) => !!S.team?.solved?.[q.id];
 const firstOpen = () => { const l = qs(); const i = l.findIndex((q) => !solved(q)); return i < 0 ? l.length : i; };
+// 우리 가족 답을 미션 종류별로 (예: mine.stride)
+const mineByKind = () => Object.fromEntries(withDefaults(S.config).questions.filter((q) => S.mine[q.id]).map((q) => [q.kind, S.mine[q.id]]));
 const allDone = () => qs().length > 0 && firstOpen() >= qs().length;
 
 /* ── 시작 ── */
@@ -176,7 +180,10 @@ function openMission(i) {
   const q = l[i];
   S.curId = q.id;
   show("mission");
-  $("qNum").textContent = `미션 ${i + 1}`;
+  const pl = PLACES[qPlace(q)];
+  $("qPlace").textContent = `${pl.no} ${pl.name}`;
+  $("qPlace").style.background = pl.color;
+  $("qNum").textContent = qCode(q) ? `활동 ${qCode(q)}` : `미션 ${i + 1}`;
   $("qTitle").textContent = `${qIcon(q)} ${qTitle(q)}`;
   $("qSolved").innerHTML = solved(q) ? `<span class="solved-tag">✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>` : "";
   const d = qDesc(q);
@@ -188,7 +195,7 @@ function openMission(i) {
   $("btnSubmit").textContent = solved(q) ? "답 고쳐서 다시 제출하기" : "답 제출하기";
   $("btnPeek").classList.toggle("hidden", q.kind === "scale");
   S.handle = renderInput($("qInput"), q, {
-    prev: S.mine[q.id], config: S.config, teamId: S.me.teamId, round: S.team?.round || 0,
+    prev: S.mine[q.id], config: S.config, mine: mineByKind(), teamId: S.me.teamId, round: S.team?.round || 0,
     autoSubmit: () => submit(),
     // 미션 해결로 치지 않고 답만 중간 저장 (펜토미노: 퍼즐 하나씩 완성할 때)
     saveDraft: (data) => setDoc(doc(db, C.answers, `${S.me.teamId}_${q.id}`), {
@@ -262,13 +269,21 @@ $("btnLogout").onclick = () => { if (confirm("로그아웃할까요? 지금까�
 function showList() { show("list"); renderList(); }
 function renderList() {
   const l = qs(), open = firstOpen();
+  let lastPlace = "";
   $("mList").innerHTML = l.map((q, i) => {
     const ok = solved(q), locked = i > open, cur = i === open;
-    return `<button type="button" class="mitem ${locked ? "locked" : ""} ${cur ? "current" : ""}" data-i="${i}">
+    const pk = qPlace(q), pl = PLACES[pk];
+    let head = "";
+    if (pk !== lastPlace) {
+      lastPlace = pk;
+      const inPl = l.filter((x) => qPlace(x) === pk);
+      head = `<div class="place-h"><span class="pn" style="background:${pl.color}">${pl.no}</span>${esc(pl.name)}<small>${inPl.filter(solved).length} / ${inPl.length}</small></div>`;
+    }
+    return `${head}<button type="button" class="mitem ${locked ? "locked" : ""} ${cur ? "current" : ""}" data-i="${i}">
       <span class="ic">${qIcon(q)}</span>
-      <span class="t">${esc(qTitle(q))}<small>미션 ${i + 1}${cur ? " · 지금 풀 차례" : ""}</small></span>
+      <span class="t">${esc(qTitle(q))}<small>${qCode(q) ? `<span class="code">활동 ${esc(qCode(q))}</span>` : ""}미션 ${i + 1}${cur ? " · 지금 풀 차례" : ""}</small></span>
       <span class="st">${ok ? "✅" : locked ? "🔒" : "▶"}</span></button>`;
-  }).join("") + (allDone() ? `<button type="button" class="mitem current" data-done><span class="ic">🏆</span><span class="t">완주 · 수료증 받기</span><span class="st">🎓</span></button>` : "");
+  }).join("") + (allDone() ? `<button type="button" class="mitem current" data-done style="margin-top:14px"><span class="ic">🏆</span><span class="t">완주 · 데이터 맵과 수료증</span><span class="st">🎓</span></button>` : "");
   $("mList").querySelectorAll("[data-i]").forEach((b) => b.onclick = () => {
     const i = Number(b.dataset.i);
     if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요 🔒"); return; }
@@ -339,8 +354,64 @@ $("inpName").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.pre
 let certCanvas = null, certTimer = null;
 async function showDone() {
   show("done");
+  makeDataMap();
   await makeCert();
 }
+
+/* ── 데이터 맵 5장면 ── */
+let dmCanvases = [], dmIdx = 0;
+async function makeDataMap() {
+  const box = $("dmBox");
+  box.innerHTML = `<div class="loading"><div class="spin"></div>데이터 맵을 만들고 있어요…</div>`;
+  const qsAll = withDefaults(S.config).questions.filter((q) => STAR_KINDS.includes(q.kind));
+  const teams = {};
+  try {
+    const snaps = await Promise.all(qsAll.map((q) => getDocs(query(collection(db, C.answers), where("session", "==", S.me.session), where("qid", "==", q.id)))));
+    snaps.forEach((sn, i) => sn.forEach((d) => { const x = d.data(); (teams[x.teamId] = teams[x.teamId] || {})[qsAll[i].kind] = x.data; }));
+  } catch (e) { console.warn(e); }
+  const m = mineByKind();
+  teams[S.me.teamId] = { ...(teams[S.me.teamId] || {}), ...m };
+  const all = Object.values(teams).map(starValues);
+  const { y, m: mo, d } = todayKR();
+  dmCanvases = await drawDataMap({
+    who: { school: S.me.school, name: S.me.name, date: `${y}. ${mo}. ${d}.` },
+    sessName: SESSIONS[S.me.session], m, all
+  });
+  $("dmTabs").innerHTML = SCENE_NAMES.map((s, i) => `<button type="button" data-i="${i}"><small>${i + 1}</small>${s}</button>`).join("");
+  $("dmTabs").querySelectorAll("button").forEach((b) => b.onclick = () => showScene(Number(b.dataset.i)));
+  showScene(dmIdx);
+}
+function showScene(i) {
+  dmIdx = i;
+  $("dmTabs").querySelectorAll("button").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === i));
+  $("dmBox").innerHTML = `<img class="cert-img" src="${dmCanvases[i].toDataURL("image/png")}" alt="데이터 맵 ${i + 1}장면">`;
+}
+const dmName = (i) => `AI투어_데이터맵_${i + 1}_${SCENE_NAMES[i]}_${S.me.name}.png`;
+async function downloadCanvas(cv, name) {
+  const blob = await canvasToPng(cv);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+$("btnDmSave").onclick = async () => {
+  if (!dmCanvases[dmIdx]) return;
+  await downloadCanvas(dmCanvases[dmIdx], dmName(dmIdx));
+  toast(`${dmIdx + 1}번째 장면 「${SCENE_NAMES[dmIdx]}」을 저장했어요!`);
+};
+$("btnDmAll").onclick = async () => {
+  if (dmCanvases.length < 5) return;
+  // 휴대폰: 공유 창으로 5장을 한 번에 (「이미지 저장」을 고르면 사진첩에 들어가요)
+  if (navigator.canShare) {
+    try {
+      const files = await Promise.all(dmCanvases.map(async (cv, i) => new File([await canvasToPng(cv)], dmName(i), { type: "image/png" })));
+      if (navigator.canShare({ files })) { await navigator.share({ files, title: "우리가족 AI투어 데이터 맵" }); return; }
+    } catch (e) { if (e?.name === "AbortError") return; }
+  }
+  for (let i = 0; i < dmCanvases.length; i++) { await downloadCanvas(dmCanvases[i], dmName(i)); await new Promise((r) => setTimeout(r, 450)); }
+  toast("5장을 모두 저장했어요! 사진첩이나 다운로드 폴더를 확인해 주세요.");
+};
 async function makeCert() {
   const { y, m, d } = todayKR();
   certCanvas = await drawCertificate({
