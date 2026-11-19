@@ -676,3 +676,8 @@ h4.sec small { color: var(--sub); }
 .done-hero .big { filter: none; }
 .dm-box img, .cert-img { box-shadow: 5px 5px 0 var(--navy); border: 2px solid var(--navy); }
 #toast { background: var(--navy); color: #fff; border: 2px solid var(--yellow); }
+
+/* 일단 제출 */
+.partial-box { margin-top: 10px; background: #fff6c9; border: 2px dashed var(--navy); border-radius: 12px; padding: 10px 12px; color: var(--ink); font-weight: 600; font-size: 14px; white-space: normal; }
+.partial-box .btn { display: flex; margin: 8px auto 0; }
+.solved-tag.partial { background: #fff; color: var(--orange); border-color: var(--orange); }

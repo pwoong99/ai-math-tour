@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=3.0";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.0";
-import { PUZZLES } from "./puzzles.js?v=3.0";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.0";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.01";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.01";
+import { PUZZLES } from "./puzzles.js?v=3.01";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.01";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -69,6 +69,9 @@ function checkAll(el, specs) {
   }
   return "";
 }
+// 일단 제출용: 숫자로 읽히면 숫자, 아니면 null
+const numOr = (el, id) => { const v = String(el.querySelector("#" + id)?.value ?? "").trim(); return v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; };
+const valOf = (el, id) => String(el.querySelector("#" + id)?.value ?? "").trim();
 const numOf = (el, id) => { const v = el.querySelector("#" + id)?.value; return String(v ?? "").trim() === "" ? null : Number(v); };
 const r2 = (n) => Math.round(n * 100) / 100;
 const sec = (t, sub = "") => `<h4 class="sec">${t}${sub ? ` <small>${sub}</small>` : ""}</h4>`;
@@ -77,7 +80,7 @@ const sec = (t, sub = "") => `<h4 class="sec">${t}${sub ? ` <small>${sub}</small
 R.euler = (el, q, { prev }) => {
   let pick = prev?.possible || "";
   el.innerHTML = `
-    ${sec("가. 한붓그리기로 따라 그려 보세요", "점을 차례로 눌러요")}
+    ${sec("가. 한붓그리기로 따라 그려 보세요", "출발점을 고른 뒤 선을 눌러요")}
     <div class="muted">같은 선을 두 번 지나지 않고 모든 선을 한 번에 그려요. 어느 점에서 출발하면 좋을까요?</div>
     <div class="tr-a" style="margin-top:8px"></div><div class="tr-b" style="margin-top:14px"></div>
     ${sec("나. 이 도형은 한붓그리기가 가능할까요?")}
@@ -92,6 +95,10 @@ R.euler = (el, q, { prev }) => {
   if (pick) el.querySelector(`[data-v="${pick}"]`)?.classList.add("on");
   choiceGroup(el, ".choice", (v) => pick = v);
   return {
+    draft() {
+      const a = ta.get(), b = tb.get();
+      return { draw: { a: { path: a.path, edges: a.edges }, b: { path: b.path, edges: b.edges } }, drawOk: { a: a.ok, b: b.ok }, possible: pick, odd: numOr(el, "e_odd"), reason: valOf(el, "e_why") };
+    },
     collect() {
       const a = ta.get(), b = tb.get();
       if (!a.ok || !b.ok) return fail(`가. 두 도형을 모두 한붓그리기로 그려 주세요. (${[a, b].filter((x) => x.ok).length} / 2 성공)`);
@@ -131,6 +138,11 @@ R.cipher = (el, q, { prev, config }) => {
   el.querySelectorAll("[data-set]").forEach((b) => b.onclick = () => { wheel.setK(Number(b.dataset.set)); el.querySelector(".wh").scrollIntoView({ block: "start", behavior: "smooth" }); });
   const up = (s) => s.toUpperCase().replace(/\s+/g, " ").trim();
   return {
+    draft() {
+      const keys = {};
+      cps.forEach((c, i) => { if (unknownAt(c)) { const k = up(el.querySelector("#c_k" + i).value); if (k) keys[i] = k; } });
+      return { answers: cps.map((c, i) => up(el.querySelector("#c_a" + i).value)), keys, my: { key: up(el.querySelector("#c_mk").value), text: up(el.querySelector("#c_mt").value) } };
+    },
     collect() {
       const answers = [], keys = {};
       for (let i = 0; i < cps.length; i++) {
@@ -235,6 +247,7 @@ R.latin = (el, q, { prev }) => {
   drawSlots();
   photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
   return {
+    draft() { return { s1: pads.map((p) => p.values), colors, design: design.values, photo, name: el.querySelector("#l_name").value.trim() }; },
     collect() {
       for (let k = 0; k < 2; k++) {
         const g = pads[k].values;
@@ -265,6 +278,7 @@ R.sign = (el, q, { prev }) => {
       <div class="sign-l">${f[2][1]} ${mini("s_" + f[2][0], p[f[2][0]], { w: 64 })} ${f[2][2]}</div></div>`).join("") +
     `<div class="family-tip">가족 함께해요 ▶ 숫자만 읽고 끝내지 말고 "내 키·몸무게와 비교하면 어느 정도일까?" 물어봐 주세요.</div>`;
   return {
+    draft() { const d = {}; SIGN_FIELDS.forEach(([, , , f]) => f.forEach(([id]) => d[id] = numOr(el, "s_" + id))); return d; },
     collect() {
       const specs = SIGN_FIELDS.flatMap(([, name, , f]) => f.map(([id, lb, u]) => ["s_" + id, `${name.split(" ").pop()} ${lb || f[0][1] + "(끝)"}`, u.split(" ")[0], false]));
       const e = checkAll(el, specs); if (e) return fail(e);
@@ -309,6 +323,12 @@ R.food = (el, q, { prev }) => {
   el.querySelectorAll(".ptable input").forEach((i) => i.addEventListener("input", live));
   live();
   return {
+    draft() {
+      const d = {};
+      [["g2", "f_g2"], ["g4", "f_g4"], ["g8", "f_g8"], ["n7", "f_n7"], ["q1", "f_q1"], ["q2", "f_q2"], ["fruit", "f_fr"], ["grain", "f_gr"], ["fruitPct", "f_fp"], ["age", "f_age"], ["times", "f_x"], ["pct", "f_pct"]].forEach(([k, id]) => d[k] = numOr(el, id));
+      d.why = valOf(el, "f_why"); d.talk = valOf(el, "f_talk");
+      return d;
+    },
     collect() {
       const e = checkAll(el, [["f_g2", "2마리 먹이", "g"], ["f_g4", "4마리 먹이", "g"], ["f_g8", "8마리 먹이", "g"], ["f_n7", "1,050g일 때 여우 수", "마리", true],
         ["f_q1", "(1) 4마리의 하루 먹이", "g"], ["f_q2", "(2) 여우 수", "마리", true]]);
@@ -363,6 +383,11 @@ R.stride = (el, q, { prev }) => {
   ph.innerHTML = `<div class="muted" style="margin:-2px 0 4px">지도 앱 화면 사진 <small>(선택)</small></div><div class="phx"></div>`;
   photoPicker(ph.querySelector(".phx"), photo, (u) => photo = u);
   return {
+    draft() {
+      const d = { photo, why: valOf(el, "st_why") };
+      ["me5", "me1", "par5", "par1", "sib5", "sib1", "steps", "walk", "map", "diff"].forEach((k) => d[k] = numOr(el, "st_" + k));
+      return d;
+    },
     collect() {
       const sib = ["st_sib5", "st_sib1"].map((id) => el.querySelector("#" + id).value.trim());
       const e = checkAll(el, [["st_me5", "학생 5보 길이", "cm"], ["st_me1", "학생 1보 길이", "cm"], ["st_par5", "부모님 5보 길이", "cm"], ["st_par1", "부모님 1보 길이", "cm"],
@@ -472,6 +497,11 @@ R.quadrat = (el, q, { prev, config }) => {
   drawPhoto(); drawAi(); formula();
 
   return {
+    draft() {
+      const n = (v) => String(v ?? "").trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : null;
+      return { photo: st.photo || "", aiCount: n(st.aiCount), aiPoints: (st.aiPoints || []).slice(0, 400), aiManual: !!st.aiManual,
+        eye: n($("#q_eye").value), basis: st.basis || "", perM2: n($("#q_m2").value), aiBy: st.aiManual ? "manual" : "gemini" };
+    },
     collect() {
       if (crop) return fail("사진 영역을 정한 뒤 「AI에게 세어 달라고 하기」를 눌러 주세요.");
       if (!st.photo) return fail("방형구 사진을 올려 주세요.");
@@ -520,6 +550,10 @@ R.area = (el, q, { prev, mine }) => {
   live();
   photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
   return {
+    draft() {
+      return { app: numOr(el, "a_app"), map: numOr(el, "a_map"), ws: numOr(el, "a_ws"), wm: numOr(el, "a_wm"), hs: numOr(el, "a_hs"), hm: numOr(el, "a_hm"),
+        stride: numOr(el, "a_st"), perM2: numOr(el, "a_pm"), total: numOr(el, "a_tot"), photo };
+    },
     collect() {
       const e = checkAll(el, [["a_app", "측정 앱 넓이", "㎡"], ["a_map", "지도 앱 넓이", "㎡", false, true], ["a_ws", "가로 보 수", "보", true], ["a_wm", "가로 길이", "m"],
         ["a_hs", "세로 보 수", "보", true], ["a_hm", "세로 길이", "m"], ["a_st", "보폭으로 잰 넓이", "㎡"], ["a_pm", "1㎡당 꽃 수", "송이", true], ["a_tot", "꽃밭 전체 꽃 수", "송이", true]]);
@@ -555,6 +589,11 @@ R.fibo = (el, q, { prev }) => {
   if (type) el.querySelector(`[data-v="${type}"]`)?.classList.add("on");
   choiceGroup(el, ".choice", (v) => { type = v; el.querySelector(".fb-u").textContent = v === "cone" ? "줄" : "장"; });
   return {
+    draft() {
+      const plants = {};
+      FIBO_ROWS.forEach(([n]) => { const v = valOf(el, "fb_" + n); if (v) plants[n] = v; });
+      return { plants, cw: numOr(el, "fb_cw"), ccw: numOr(el, "fb_ccw"), starType: type, star: numOr(el, "fb_star") };
+    },
     collect() {
       const plants = {};
       FIBO_ROWS.forEach(([n]) => { const v = el.querySelector("#fb_" + n).value.trim(); if (v) plants[n] = v; });
@@ -596,6 +635,7 @@ R.golden = (el, q, { prev }) => {
   el.querySelectorAll("#g_hand,#g_arm").forEach((i) => i.addEventListener("input", live));
   live();
   return {
+    draft() { return { hand: numOr(el, "g_hand"), arm: numOr(el, "g_arm"), found1: valOf(el, "g_f1"), found2: valOf(el, "g_f2") }; },
     collect() {
       const e = checkAll(el, [["g_hand", "손 길이", "cm"], ["g_arm", "손목~팔꿈치 길이", "cm"]]); if (e) return fail(e);
       if (!(numOf(el, "g_hand") > 0)) return fail("손 길이는 0보다 커야 해요.");
@@ -716,6 +756,7 @@ R.pento = (el, q, { prev, config, teamId, round = 0, autoSubmit, saveDraft }) =>
   showList();
 
   return {
+    draft() { return dataOut(); },
     collect() {
       if (!prog().passed) return fail(mode === "group"
         ? `서로 다른 조각 수 퍼즐을 ${need}가지 완성해야 통과할 수 있어요. (지금 ${count()}가지)`
@@ -747,6 +788,7 @@ R.fun = (el, q, { prev, config }) => {
     el.querySelectorAll(".choice").forEach((b) => b.classList.add("on"));
   };
   return {
+    draft() { return { picks: [...picks] }; },
     collect() {
       if (!picks.size) return fail("재미있었던 활동을 하나 이상 골라 주세요.");
       return { ok: true, data: { picks: [...picks] } };
@@ -767,6 +809,8 @@ R.scale = (el, q, { teamId }) => {
     el.querySelectorAll(".stars button").forEach((x) => x.classList.toggle("on", x === b));
   });
   return {
+    draft() { return { submitted: false }; },
+    draftPriv() { if (!v) return null; localStorage.setItem(key, String(v)); return { kind: "scale", value: v }; },
     collect() {
       if (!v) return fail("1점부터 5점 중 하나를 골라 주세요.");
       localStorage.setItem(key, String(v));
@@ -782,6 +826,7 @@ R.comment = (el, q, { prev }) => {
   const t = el.querySelector("#cm"), n = el.querySelector(".n");
   const upd = () => n.textContent = t.value.length; t.oninput = upd; upd();
   return {
+    draft() { return { text: t.value.trim() }; },
     collect() {
       const s = t.value.trim();
       if (s.length < 2) return fail("소감을 한마디 남겨 주세요.");
@@ -794,6 +839,7 @@ R.comment = (el, q, { prev }) => {
 R.number = (el, q, { prev }) => {
   el.innerHTML = numField("cn", q.label || "답", q.unit || "", prev?.value, { int: !!q.intOnly });
   return {
+    draft() { return { value: numOr(el, "cn") }; },
     collect() {
       const v = el.querySelector("#cn").value;
       const e = numCheck(v, q.label || "답", q.unit || "", !!q.intOnly); if (e) return fail(e);
@@ -804,6 +850,7 @@ R.number = (el, q, { prev }) => {
 R.text = (el, q, { prev }) => {
   el.innerHTML = `<textarea id="ct" class="inp" rows="3" maxlength="200">${esc(prev?.text || "")}</textarea>`;
   return {
+    draft() { return { text: valOf(el, "ct") }; },
     collect() {
       const s = el.querySelector("#ct").value.trim();
       if (!s) return fail("답을 써 주세요.");
@@ -816,13 +863,13 @@ R.choice = (el, q, { prev }) => {
   const opts = (q.options || []).filter(Boolean);
   el.innerHTML = `<div class="choices list">${opts.map((o) => `<button type="button" class="choice ${o === pick ? "on" : ""}" data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>`;
   choiceGroup(el, ".choice", (v) => pick = v);
-  return { collect() { return pick ? { ok: true, data: { pick } } : fail("하나를 골라 주세요."); } };
+  return { draft() { return { pick }; }, collect() { return pick ? { ok: true, data: { pick } } : fail("하나를 골라 주세요."); } };
 };
 R.photo = (el, q, { prev }) => {
   let photo = prev?.photo || "";
   el.innerHTML = `<div class="ph"></div>`;
   photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
-  return { collect() { return photo ? { ok: true, data: { photo } } : fail("사진을 올려 주세요."); } };
+  return { draft() { return { photo }; }, collect() { return photo ? { ok: true, data: { photo } } : fail("사진을 올려 주세요."); } };
 };
 
 export function renderInput(el, q, ctx) {

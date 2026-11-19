@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=3.0";
-import { esc, toast } from "./fb.js?v=3.0";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=3.01";
+import { esc, toast } from "./fb.js?v=3.01";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -362,20 +362,22 @@ const edgeD = (f, e) => e[2] || `M${f.V[e[0]].join(" ")} L${f.V[e[1]].join(" ")}
 // 길 색: 처음 선은 초록 → 마지막 선은 주황
 const hue = (i, n) => `hsl(${150 - (n > 1 ? i / (n - 1) : 0) * 125} 70% 42%)`;
 
-export function eulerFigSvg(fig, { path = [], edges = [], cur = null, small = false } = {}) {
+export function eulerFigSvg(fig, { path = [], edges = [], cur = null, small = false, pickEdges = false } = {}) {
   const f = EULER_FIGS[fig], [W, H] = f.vb, n = f.E.length;
   let g = f.E.map((e) => `<path d="${edgeD(f, e)}" fill="none" stroke="#d9d3c4" stroke-width="${small ? 5 : 7}" stroke-linecap="round"/>`).join("");
   g += edges.map((ei, i) => `<path d="${edgeD(f, f.E[ei])}" fill="none" stroke="${hue(i, n)}" stroke-width="${small ? 5 : 7}" stroke-linecap="round"/>`).join("");
+  // 출발한 뒤에는 선을 눌러요 (눈에 안 보이는 굵은 선이 손가락을 받아요)
+  if (pickEdges) g += f.E.map((e, i) => `<path data-e="${i}" d="${edgeD(f, e)}" fill="none" stroke="transparent" stroke-width="24" stroke-linecap="round" style="cursor:pointer"/>`).join("");
   g += Object.entries(f.V).map(([id, [x, y]]) => {
     const start = path[0] === id, now = cur === id;
-    return `<g data-v="${id}" style="cursor:pointer">
+    return `<g data-v="${id}" style="cursor:pointer${pickEdges ? ";pointer-events:none" : ""}">
       <circle cx="${x}" cy="${y}" r="22" fill="transparent"/>
       ${now ? `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#e5484d" stroke-width="4"/>` : ""}
       <circle cx="${x}" cy="${y}" r="${small ? 8 : 10}" fill="${start ? "#1f2a5c" : "#e53935"}" stroke="#fff" stroke-width="2"/></g>`;
   }).join("");
   if (path.length) {
     const [x, y] = f.V[path[0]];
-    g += `<text x="${x}" y="${y + (y > H / 2 ? 26 : -18)}" text-anchor="middle" font-size="${small ? 16 : 13}" font-weight="900" fill="#1f2a5c">출발</text>`;
+    g += `<text x="${x}" y="${y + (y > H / 2 ? 26 : -18)}" text-anchor="middle" font-size="${small ? 16 : 13}" font-weight="900" fill="#1f2a5c" style="pointer-events:none">출발</text>`;
   }
   return `<svg viewBox="-10 -10 ${W + 20} ${H + 20}" style="width:100%;max-width:${small ? 160 : 320}px;display:block;margin:0 auto;touch-action:manipulation">${g}</svg>`;
 }
@@ -386,26 +388,27 @@ export function eulerTracer(el, fig, prev, onChange = () => {}) {
   const ok = () => edges.length === n;
   const stuck = () => path.length && !ok() && !f.E.some((e, i) => !edges.includes(i) && (e[0] === path.at(-1) || e[1] === path.at(-1)));
   const draw = () => {
-    const msg = !path.length ? "출발할 점을 눌러요."
+    const msg = !path.length ? "먼저 출발할 점을 눌러요."
       : ok() ? `🎉 성공! ${n}개의 선을 한 번씩 모두 지났어요.`
       : stuck() ? "더 갈 수 있는 선이 없어요. 되돌리거나 처음부터 다시 해 봐요!"
-      : `이어서 갈 점을 눌러요. (${edges.length} / ${n} 선)`;
-    el.innerHTML = `<div class="tracer ${ok() ? "ok" : ""}">${eulerFigSvg(fig, { path, edges, cur: path.at(-1) })}
+      : `이어서 지나갈 선을 눌러요. (${edges.length} / ${n} 선)`;
+    el.innerHTML = `<div class="tracer ${ok() ? "ok" : ""}">${eulerFigSvg(fig, { path, edges, cur: path.at(-1), pickEdges: path.length > 0 && !ok() })}
       <div class="tr-msg ${ok() ? "good" : stuck() ? "bad" : ""}">${msg}</div>
       <div class="row" style="justify-content:center;gap:8px">
-        <button type="button" class="btn small gray" data-undo ${edges.length ? "" : "disabled"}>↶ 한 칸 되돌리기</button>
+        <button type="button" class="btn small gray" data-undo ${path.length ? "" : "disabled"}>↶ 한 칸 되돌리기</button>
         <button type="button" class="btn small gray" data-reset ${path.length ? "" : "disabled"}>처음부터</button></div></div>`;
-    el.querySelectorAll("[data-v]").forEach((v) => v.addEventListener("click", () => tap(v.dataset.v)));
+    el.querySelectorAll("[data-v]").forEach((v) => v.addEventListener("click", () => tapV(v.dataset.v)));
+    el.querySelectorAll("[data-e]").forEach((p) => p.addEventListener("click", () => tapE(Number(p.dataset.e))));
     el.querySelector("[data-undo]").onclick = () => { if (edges.length) { edges.pop(); path.pop(); } else path = []; draw(); onChange(); };
     el.querySelector("[data-reset]").onclick = () => { path = []; edges = []; draw(); onChange(); };
   };
-  const tap = (v) => {
-    if (ok()) return;
-    if (!path.length) { path = [v]; draw(); onChange(); return; }
-    const c = path.at(-1);
-    const i = f.E.findIndex((e, k) => !edges.includes(k) && ((e[0] === c && e[1] === v) || (e[1] === c && e[0] === v)));
-    if (i < 0) { toast(v === c ? "다른 점을 눌러요." : "그 점으로 바로 가는 선이 없거나, 이미 지나간 선이에요."); return; }
-    edges.push(i); path.push(v);
+  const tapV = (v) => { if (!path.length) { path = [v]; draw(); onChange(); } };
+  const tapE = (i) => {
+    if (ok() || !path.length) return;
+    const c = path.at(-1), e = f.E[i];
+    if (edges.includes(i)) { toast("이미 지나간 선이에요."); return; }
+    if (e[0] !== c && e[1] !== c) { toast("지금 있는 점(빨간 동그라미)에 이어진 선을 눌러요."); return; }
+    edges.push(i); path.push(e[0] === c ? e[1] : e[0]);
     draw(); onChange();
     if (ok()) toast("🎉 한붓그리기 성공!");
   };

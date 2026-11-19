@@ -4,13 +4,13 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.0";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.0";
-import { STAR_ITEMS, starValues } from "./datamap.js?v=3.0";
-import { PUZZLES } from "./puzzles.js?v=3.0";
-import { miniGrid } from "./widgets.js?v=3.0";
-import { renderPeek } from "./peek.js?v=3.0";
-import { drawRoster, savePng } from "./cert.js?v=3.0";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.01";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.01";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=3.01";
+import { PUZZLES } from "./puzzles.js?v=3.01";
+import { miniGrid } from "./widgets.js?v=3.01";
+import { renderPeek } from "./peek.js?v=3.01";
+import { drawRoster, savePng } from "./cert.js?v=3.01";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -314,7 +314,7 @@ function renderProgress() {
       const n = qs.filter((q) => t.solved?.[q.id]).length;
       return `<tr><td><b>${esc(t.label)}</b></td><td>${esc(t.school || "")} ${esc(t.name || "")}</td>
         <td>${curI >= 0 ? `${curI + 1}. ${esc(qTitle(qs[curI]))}` : n === qs.length && n ? "🏆 완주" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
-        ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}">${ok ? "✔" : cur ? "👉" : ""}</td>`; }).join("")}
+        ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}" ${ok === "partial" ? 'title="일단 제출"' : ""}>${ok === "partial" ? "📝" : ok ? "✔" : cur ? "👉" : ""}</td>`; }).join("")}
         <td class="muted">${ago(t.updatedAt)}</td></tr>`;
     }).join("")}
     <tr style="background:#f3f0e6"><td colspan="4"><b>미션별 해결 팀 수</b></td>${qs.map((q) => `<td class="c"><b>${list.filter((t) => t.solved?.[q.id]).length}</b></td>`).join("")}<td></td></tr></tbody>`;
@@ -536,6 +536,10 @@ async function loadResults() {
 
 function summarize(kind, d, priv) {
   if (!d) return "";
+  if (d.partial) return "(일단 제출) " + summarizeFull(kind, d, priv);
+  return summarizeFull(kind, d, priv);
+}
+function summarizeFull(kind, d, priv) {
   const v = (x) => x ?? "-";
   switch (kind) {
     case "euler": return `따라 그리기 ${d.draw ? "성공" : "-"} (출발 ${d.draw?.a?.path?.[0] || "-"}·${d.draw?.b?.path?.[0] || "-"}) / ${d.possible} / 홀수점 ${d.odd}개 / ${d.reason}`;

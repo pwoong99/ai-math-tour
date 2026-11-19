@@ -1,10 +1,10 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=3.0";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText } from "./questions.js?v=3.0";
-import { PUZZLES } from "./puzzles.js?v=3.0";
-import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.0";
-import { SIGN_FIELDS, FIBO_ROWS } from "./inputs.js?v=3.0";
+import { esc } from "./fb.js?v=3.01";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText } from "./questions.js?v=3.01";
+import { PUZZLES } from "./puzzles.js?v=3.01";
+import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.01";
+import { SIGN_FIELDS, FIBO_ROWS } from "./inputs.js?v=3.01";
 
 const PALETTE = ["#1f2a5c", "#e5484d", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
@@ -98,6 +98,7 @@ function hbars(rows, { unit = "", max, color = "#1f2a5c", icon = "", nameW = 74 
 
 const P = {};
 
+const ok = (v) => v != null && v !== "" && Number.isFinite(Number(v));
 P.euler = (el, list, { myTeamId: me }) => {
   const drawn = list.filter((a) => a.data.draw);
   // 가족들이 출발한 점 (도형 가)
@@ -108,9 +109,10 @@ P.euler = (el, list, { myTeamId: me }) => {
     ${f.E.map((e) => `<path d="${e[2] || `M${f.V[e[0]].join(" ")} L${f.V[e[1]].join(" ")}`}" fill="none" stroke="#c8c1b0" stroke-width="5"/>`).join("")}
     ${Object.entries(f.V).map(([id, [x, y]]) => `<circle cx="${x}" cy="${y}" r="${8 + (starts[id] || 0) * 3}" fill="${starts[id] ? "#e5484d" : "#e0dbcf"}" opacity=".9"/>
       ${starts[id] ? `<text x="${x + 24}" y="${y + 5}" font-size="15" font-weight="900" fill="#b8282d">${starts[id]}팀</text>` : ""}`).join("")}</svg>`;
+  const withOdd = list.filter((a) => ok(a.data.odd));
   const groups = ["가능", "불가능"].map((n) => ({ name: n === "가능" ? "⭕ 가능" : "❌ 불가능", items: list.filter((a) => a.data.possible === n) }));
   const odds = {};
-  list.forEach((a) => { const k = a.data.odd; (odds[k] = odds[k] || []).push(a); });
+  withOdd.forEach((a) => { const k = a.data.odd; (odds[k] = odds[k] || []).push(a); });
   const oddRows = Object.keys(odds).sort((a, b) => a - b).map((k) => ({ name: `홀수점 ${k}개`, items: odds[k] }));
   el.innerHTML = `
     <div class="chart"><h4>가. 한붓그리기 — 가족들은 어느 점에서 출발했을까?</h4>${startSvg}
@@ -118,8 +120,8 @@ P.euler = (el, list, { myTeamId: me }) => {
     <div class="chart"><h4>나. 한붓그리기가 가능할까? 가족 투표</h4>${voteBars(groups, me, (i) => i ? "#d64545" : "#1f2a5c")}</div>
     <div class="chart"><h4>홀수점은 몇 개라고 했을까?</h4>${voteBars(oddRows, me)}</div>
     <h4 style="margin:14px 2px 8px">💬 가족들의 이유</h4>
-    <div class="bubbles">${list.map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}">
-      <div class="who">${esc(who(a, me))} · ${a.data.possible === "가능" ? "⭕ 가능" : "❌ 불가능"} · 홀수점 ${a.data.odd}개</div>${esc(a.data.reason)}</div>`).join("")}</div>`;
+    <div class="bubbles">${list.filter((a) => a.data.reason).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}">
+      <div class="who">${esc(who(a, me))}${a.data.possible ? ` · ${a.data.possible === "가능" ? "⭕ 가능" : "❌ 불가능"}` : ""}${ok(a.data.odd) ? ` · 홀수점 ${a.data.odd}개` : ""}</div>${esc(a.data.reason)}</div>`).join("") || `<div class="empty">아직 이유가 없어요.</div>`}</div>`;
 };
 
 P.cipher = (el, list, { myTeamId: me, config, admin }) => {
@@ -132,7 +134,7 @@ P.cipher = (el, list, { myTeamId: me, config, admin }) => {
       body.innerHTML = (mine ? "" : `<div class="card" style="text-align:center">🔒 우리 가족 답을 내면 정답이 공개돼요!</div>`) + cps.map((c, i) => {
         const ans = normText(c.answer);
         const g = new Map();
-        rows.forEach((a) => { const k = normText(a.data.answers[i]); if (!g.has(k)) g.set(k, []); g.get(k).push(a); });
+        rows.forEach((a) => { const k = normText(a.data.answers[i]); if (!k) return; if (!g.has(k)) g.set(k, []); g.get(k).push(a); });
         const groups = [...g.entries()].sort((a, b) => b[1].length - a[1].length);
         const right = rows.filter((a) => normText(a.data.answers[i]) === ans).length;
         return `<div class="chart"><h4>${unk(c) ? "도전" : "문제"} ${i + 1} · <span style="color:#c62828;letter-spacing:1px">${esc(c.text)}</span>
@@ -144,7 +146,7 @@ P.cipher = (el, list, { myTeamId: me, config, admin }) => {
       }).join("");
       return;
     }
-    const my = rows.filter((a) => a.data.my?.text);
+    const my = rows.filter((a) => a.data.my?.text && a.data.my?.key);
     body.innerHTML = `<div class="peek-sub">다른 가족이 보낸 응원 암호예요. 암호판으로 풀어 본 뒤 「정답 보기」를 눌러 확인해요!</div>
       <div class="bubbles">${my.map((a) => {
         const sh = keyShift(a.data.my.key);
@@ -163,11 +165,11 @@ P.latin = (el, list, { myTeamId: me }) => {
   tabs(el, ["스마트톡 사진", "색 설계도"], (t, body) => {
     if (t === 0) {
       body.innerHTML = `<div class="peek-sub">사진을 누르면 크게 볼 수 있어요.</div>` +
-        wall(list, me, (a) => a.data.photo, (a) => `${esc(who(a, me))}${a.data.name ? `<small>${esc(a.data.name)}</small>` : ""}`);
+        wall(list.filter((a) => a.data.photo), me, (a) => a.data.photo, (a) => `${esc(who(a, me))}${a.data.name ? `<small>${esc(a.data.name)}</small>` : ""}`);
       return;
     }
     body.innerHTML = `<div class="peek-sub">가족마다 고른 4가지 색으로 만든 라틴방진 설계도예요. 가로·세로에 같은 색이 한 번씩만!</div>
-      <div class="sol-gallery">${list.filter((a) => a.data.design).map((a) => `<div class="s ${a.teamId === me ? "mine" : ""}">${latinMini(a)}<div style="margin-top:6px">${esc(who(a, me))}</div></div>`).join("") || `<div class="empty">아직 설계도가 없어요.</div>`}</div>`;
+      <div class="sol-gallery">${list.filter((a) => a.data.design?.every?.(Boolean) && a.data.colors).map((a) => `<div class="s ${a.teamId === me ? "mine" : ""}">${latinMini(a)}<div style="margin-top:6px">${esc(who(a, me))}</div></div>`).join("") || `<div class="empty">아직 설계도가 없어요.</div>`}</div>`;
   });
   // 줌은 사진 탭에서만
 };
@@ -187,7 +189,8 @@ P.sign = (el, list, { myTeamId: me }) => {
 };
 
 P.food = (el, list, { myTeamId: me }) => {
-  const rows = list.filter((a) => a.data.q1 != null);
+  const all = list;
+  const rows = list.filter((a) => ok(a.data.q1));
   tabs(el, ["🦊 먹이", "비례표", "🐢 나이"], (t, body) => {
     if (t === 0) {
       const m = modeOf(rows.map((a) => a.data.q1));
@@ -195,53 +198,57 @@ P.food = (el, list, { myTeamId: me }) => {
         <div class="chart"><h4>가족들이 구한 4마리의 하루 먹이량 ★</h4>
           ${dotStack(rows.map((a) => ({ v: a.data.q1, mine: a.teamId === me })), { unit: "g", icon: "🦊" })}
           <div class="calc" style="text-align:center;margin-top:8px">1 : 150 = 4 : <b>${fmt(m.v)}</b></div></div>
-        <div class="chart"><h4>② 비례배분 — 과일 : 곡식 = 3 : 2</h4>${voteBars([...new Map(rows.map((a) => [`과일 ${a.data.fruit}g · 곡식 ${a.data.grain}g · ${a.data.fruitPct}%`, 0])).keys()].map((k) => ({ name: k, items: rows.filter((a) => `과일 ${a.data.fruit}g · 곡식 ${a.data.grain}g · ${a.data.fruitPct}%` === k) })), me)}</div>`;
+        <div class="chart"><h4>② 비례배분 — 과일 : 곡식 = 3 : 2</h4>${voteBars([...new Map(all.filter((a) => ok(a.data.fruit) && ok(a.data.grain)).map((a) => [`과일 ${a.data.fruit}g · 곡식 ${a.data.grain}g · ${a.data.fruitPct}%`, 0])).keys()].map((k) => ({ name: k, items: all.filter((a) => `과일 ${a.data.fruit}g · 곡식 ${a.data.grain}g · ${a.data.fruitPct}%` === k) })), me)}</div>`;
       return;
     }
     if (t === 1) {
-      const cell = (k) => { const m = modeOf(rows.map((a) => a.data[k])); return m.v == null ? "-" : `${fmt(m.v)}<small>${m.n}팀</small>`; };
+      const cell = (k) => { const m = modeOf(all.map((a) => a.data[k]).filter(ok)); return m.v == null ? "-" : `${fmt(m.v)}<small>${m.n}팀</small>`; };
       body.innerHTML = `<div class="peek-sub">칸마다 가장 많은 가족이 쓴 답이에요.</div>
         <div class="ptable"><div class="h">여우 수</div><div>1</div><div>2</div><div>4</div><div>8</div><div>${cell("n7")}</div>
           <div class="h">먹이(g)</div><div>150</div><div>${cell("g2")}</div><div>${cell("g4")}</div><div>${cell("g8")}</div><div>1,050</div></div>
         <h4 style="margin:14px 2px 8px">💬 아랫줄(먹이 ÷ 마리 수)이 모두 같은 까닭</h4>
-        <div class="bubbles">${rows.map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.why)}</div>`).join("")}</div>
-        ${rows.some((a) => a.data.talk) ? `<h4 style="margin:14px 2px 8px">🗣 가족 토론 — 어느 우리 여우가 더 배불리 먹을까?</h4>
-          <div class="bubbles">${rows.filter((a) => a.data.talk).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.talk)}</div>`).join("")}</div>` : ""}`;
+        <div class="bubbles">${all.filter((a) => a.data.why).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.why)}</div>`).join("")}</div>
+        ${all.some((a) => a.data.talk) ? `<h4 style="margin:14px 2px 8px">🗣 가족 토론 — 어느 우리 여우가 더 배불리 먹을까?</h4>
+          <div class="bubbles">${all.filter((a) => a.data.talk).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.talk)}</div>`).join("")}</div>` : ""}`;
       return;
     }
-    const s = rows.map((a) => ({ name: who(a, me), v: a.data.age, txt: `${a.data.age}세 · 거북은 ${fmt(a.data.times)}배`, mine: a.teamId === me })).sort((a, b) => a.v - b.v);
-    body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.age))) + "세", "평균 나이 ★"], [fmt(avg(rows.map((a) => 255 / a.data.age)), 0) + "배", "거북은 우리보다 평균"]])}
+    const ag = all.filter((a) => ok(a.data.age) && a.data.age > 0);
+    const s = ag.map((a) => ({ name: who(a, me), v: a.data.age, txt: `${a.data.age}세${ok(a.data.times) ? ` · 거북은 ${fmt(a.data.times)}배` : ""}`, mine: a.teamId === me })).sort((a, b) => a.v - b.v);
+    body.innerHTML = `${stats([[fmt(avg(ag.map((a) => a.data.age))) + "세", "평균 나이 ★"], [fmt(avg(ag.map((a) => 255 / a.data.age)), 0) + "배", "거북은 우리보다 평균"]])}
       <div class="chart"><h4>가족별 나이와 거북의 기록 255년</h4>${hbars(s, { max: Math.max(...s.map((x) => x.v), 1), nameW: 74 })}</div>
       <div class="muted">비로 나타내면 크기가 아주 다른 것(거북과 우리)도 공평하게 비교할 수 있어요.</div>`;
   });
 };
 
 P.stride = (el, list, { myTeamId: me }) => {
-  const rows = [...list].filter((a) => a.data.me1 != null).sort(lblSort);
+  const allS = [...list].sort(lblSort);
+  const rows = allS.filter((a) => ok(a.data.me1));
   tabs(el, ["👣 1보 길이", "📏 보폭 vs 🗺 지도 앱", "💬 오차 이야기"], (i, body) => {
     if (i === 0) {
       const s = rows.map((a) => ({ name: who(a, me), v: a.data.me1, mine: a.teamId === me })).sort((a, b) => b.v - a.v);
-      const p = rows.map((a) => a.data.par1).filter((v) => v != null);
+      const p = rows.map((a) => a.data.par1).filter(ok);
       body.innerHTML = `${stats([[fmt(avg(s.map((x) => x.v))) + "cm", "학생 평균 1보 ★"], [fmt(avg(p)) + "cm", "부모님 평균 1보"], [fmt(Math.max(...s.map((x) => x.v))) + "cm", "가장 긴 학생 1보"]])}
         <div class="chart"><h4>가족별 학생 1보 길이</h4>${hbars(s, { unit: "cm", icon: "👣" })}</div>
         <div class="chart"><h4>학생과 부모님 1보 비교</h4>
           <div class="legend"><span><i style="background:#e5484d"></i>학생</span><span><i style="background:#3a7bd5"></i>부모님</span></div>
-          ${rows.map((a) => `<div style="margin:6px 0"><div style="font-weight:800;font-size:13px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
+          ${rows.filter((a) => ok(a.data.par1)).map((a) => `<div style="margin:6px 0"><div style="font-weight:800;font-size:13px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
             ${hbars([{ name: "학생", v: a.data.me1, txt: a.data.me1 + "cm" }], { max: Math.max(...rows.flatMap((x) => [x.data.me1, x.data.par1 || 0])), color: "#e5484d", nameW: 44 })}
             ${hbars([{ name: "부모님", v: a.data.par1, txt: a.data.par1 + "cm" }], { max: Math.max(...rows.flatMap((x) => [x.data.me1, x.data.par1 || 0])), color: "#3a7bd5", nameW: 44 })}</div>`).join("")}</div>`;
       return;
     }
     if (i === 2) {
-      body.innerHTML = `<div class="bubbles">${rows.map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))} · 차이 ${fmt(a.data.diff)}m</div>${esc(a.data.why)}</div>`).join("")}</div>`;
+      body.innerHTML = `<div class="bubbles">${allS.filter((a) => a.data.why).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}${ok(a.data.diff) ? ` · 차이 ${fmt(a.data.diff)}m` : ""}</div>${esc(a.data.why)}</div>`).join("") || `<div class="empty">아직 이야기가 없어요.</div>`}</div>`;
       return;
     }
-    const all = rows.flatMap((a) => [a.data.walk, a.data.map]);
+    const rowsD = allS.filter((a) => ok(a.data.walk) && ok(a.data.map));
+    if (!rowsD.length) { body.innerHTML = `<div class="empty">아직 두 거리를 모두 낸 가족이 없어요.</div>`; return; }
+    const all = rowsD.flatMap((a) => [a.data.walk, a.data.map]);
     const mn = Math.min(...all), mx = Math.max(...all), pad = (mx - mn) * 0.1 || 5;
     const lo = Math.max(0, mn - pad), hi = mx + pad;
-    const W = WIDE ? 560 : 360, L = WIDE ? 230 : 62, Rr = 62, rowH = 30, H = rows.length * rowH + 34;
+    const W = WIDE ? 560 : 360, L = WIDE ? 230 : 62, Rr = 62, rowH = 30, H = rowsD.length * rowH + 34;
     const X = (v) => L + (v - lo) / (hi - lo) * (W - L - Rr);
     let g = "";
-    rows.forEach((a, k) => {
+    rowsD.forEach((a, k) => {
       const y = 20 + k * rowH + rowH / 2, w = X(a.data.walk), p = X(a.data.map), d = Math.abs(a.data.walk - a.data.map);
       g += `<text x="${L - 10}" y="${y}" text-anchor="end" dominant-baseline="central" font-size="12" font-weight="800" fill="${a.teamId === me ? "#e5484d" : "#1d2b2a"}">${esc(who(a, me))}</text>
         <line x1="${Math.min(w, p)}" x2="${Math.max(w, p)}" y1="${y}" y2="${y}" stroke="#c8c1b0" stroke-width="4" stroke-linecap="round"/>
@@ -249,8 +256,8 @@ P.stride = (el, list, { myTeamId: me }) => {
         <text x="${W - 8}" y="${y}" text-anchor="end" dominant-baseline="central" font-size="11" font-weight="800" fill="#5d6b69">차이 ${fmt(d)}m</text>`;
     });
     [lo, (lo + hi) / 2, hi].forEach((v) => g += `<text x="${X(v)}" y="${H - 4}" text-anchor="middle" font-size="11" fill="#5d6b69">${fmt(v, 0)}m</text>`);
-    const diffs = rows.map((a) => ({ a, d: Math.abs(a.data.walk - a.data.map) })).sort((x, y) => x.d - y.d);
-    body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.walk))) + "m", "보폭 거리 평균 ★"], [fmt(avg(rows.map((a) => a.data.map))) + "m", "지도 앱 거리 평균 ★"], [fmt(avg(diffs.map((x) => x.d))) + "m", "평균 차이"]])}
+    const diffs = rowsD.map((a) => ({ a, d: Math.abs(a.data.walk - a.data.map) })).sort((x, y) => x.d - y.d);
+    body.innerHTML = `${stats([[fmt(avg(rowsD.map((a) => a.data.walk))) + "m", "보폭 거리 평균 ★"], [fmt(avg(rowsD.map((a) => a.data.map))) + "m", "지도 앱 거리 평균 ★"], [fmt(avg(diffs.map((x) => x.d))) + "m", "평균 차이"]])}
       <div class="chart"><h4>내 보폭으로 잰 거리와 지도 앱 거리</h4>
         <div class="legend"><span><i style="background:#e5484d"></i>보폭으로 잰 거리</span><span><i style="background:#3a7bd5"></i>지도 앱 거리</span></div>
         <svg viewBox="0 0 ${W} ${H}">${g}</svg></div>
@@ -259,9 +266,11 @@ P.stride = (el, list, { myTeamId: me }) => {
 };
 
 P.quadrat = (el, list, { myTeamId: me }) => {
-  const rows = [...list].sort(lblSort);
+  const allQ = [...list].sort(lblSort);
   tabs(el, ["📷 사진", "👀 vs 🤖", "1㎡당 꽃 수"], (i, body) => {
+    let rows = allQ;
     if (i === 0) {
+      rows = allQ.filter((a) => a.data.photo);
       body.innerHTML = `<div class="peek-sub">빨간 점은 AI가 꽃이라고 본 곳이에요. 누르면 크게 보여요.</div>
         <div class="sol-gallery" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${rows.map((a) => `
           <div class="s ${a.teamId === me ? "mine" : ""}" data-zoom="${a.teamId}">${dotsHtml(a.data.photo, a.data.aiManual ? [] : a.data.aiPoints)}
@@ -269,6 +278,7 @@ P.quadrat = (el, list, { myTeamId: me }) => {
       return;
     }
     if (i === 1) {
+      rows = allQ.filter((a) => ok(a.data.eye) && ok(a.data.aiCount));
       const e = avg(rows.map((a) => a.data.eye)), ai = avg(rows.map((a) => a.data.aiCount));
       const mx = Math.max(1, ...rows.flatMap((a) => [a.data.eye, a.data.aiCount]));
       body.innerHTML = `${stats([[fmt(e) + "송이", "👀 직접 센 수 평균 ★"], [fmt(ai) + "송이", "🤖 AI가 센 수 평균 ★"], [fmt(Math.abs(e - ai)) + "송이", "평균의 차이"]])}
@@ -280,6 +290,7 @@ P.quadrat = (el, list, { myTeamId: me }) => {
           <div class="muted">꽃이 겹쳐 있거나 봉오리가 있으면 AI와 사람이 센 수가 달라질 수 있어요. 같은 사진도 AI마다 숫자가 다를 수 있어요.</div></div>`;
       return;
     }
+    rows = allQ.filter((a) => ok(a.data.perM2));
     body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.perM2)), 0) + "송이", "1㎡당 평균"], [rows.length + "곳", "방형구를 놓은 곳"]])}
       <div class="chart"><h4>가족별 1㎡당 꽃 수 (틀 안 꽃 수 × 25)</h4>${dotStack(rows.map((a) => ({ v: a.data.perM2, mine: a.teamId === me })), { unit: "송이", icon: "🌼" })}</div>
       <div class="muted">틀을 놓은 곳에 따라 꽃 수가 달라져요. 여러 곳에서 세어 평균을 내면 더 믿을 만해요(표본 조사!).</div>`;
@@ -287,19 +298,21 @@ P.quadrat = (el, list, { myTeamId: me }) => {
 };
 
 P.area = (el, list, { myTeamId: me }) => {
-  const rows = [...list].sort(lblSort);
+  const allA = [...list].sort(lblSort);
   tabs(el, ["📐 세 가지 방법", "🌼 꽃밭 전체 꽃 수"], (t, body) => {
     if (t === 0) {
+      const rows = allA.filter((a) => ok(a.data.app) && ok(a.data.stride));
       const mx = Math.max(1, ...rows.flatMap((a) => [a.data.app, a.data.map || 0, a.data.stride]));
       body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.app))) + "㎡", "측정 앱 평균 ★"], [fmt(avg(rows.map((a) => a.data.stride))) + "㎡", "보폭 넓이 평균 ★"], [fmt(avg(rows.map((a) => Math.abs(a.data.app - a.data.stride)))) + "㎡", "평균 차이"]])}
         <div class="chart"><h4>같은 꽃밭, 방법마다 넓이가 같을까?</h4>
           <div class="legend"><span><i style="background:#1f2a5c"></i>측정 앱</span><span><i style="background:#3a7bd5"></i>지도 앱</span><span><i style="background:#e5484d"></i>보폭</span></div>
           ${rows.map((a) => `<div style="margin:8px 0"><div style="font-weight:800;font-size:14px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
             ${hbars([{ name: "측정 앱", v: a.data.app, txt: a.data.app + "㎡" }], { max: mx, color: "#1f2a5c", nameW: 58 })}
-            ${a.data.map != null ? hbars([{ name: "지도 앱", v: a.data.map, txt: a.data.map + "㎡" }], { max: mx, color: "#3a7bd5", nameW: 58 }) : ""}
+            ${ok(a.data.map) ? hbars([{ name: "지도 앱", v: a.data.map, txt: a.data.map + "㎡" }], { max: mx, color: "#3a7bd5", nameW: 58 }) : ""}
             ${hbars([{ name: "보폭", v: a.data.stride, txt: a.data.stride + "㎡" }], { max: mx, color: "#e5484d", nameW: 58 })}</div>`).join("")}</div>`;
       return;
     }
+    const rows = allA.filter((a) => ok(a.data.total));
     body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.total)), 0) + "송이", "우리 모두의 추정 (평균)"], [rows.length + "팀", "답을 낸 가족"]])}
       <div class="chart"><h4>꽃밭 전체 꽃 수 어림 (1㎡당 꽃 수 × 넓이)</h4>${hbars(rows.map((a) => ({ name: who(a, me), v: a.data.total, txt: `${fmt(a.data.total, 0)}송이`, mine: a.teamId === me })).sort((x, y) => y.v - x.v), {})}</div>
       <div class="muted">가족마다 고른 꽃밭이 달라요. 넓이와 1㎡당 꽃 수 중 무엇이 결과를 더 크게 바꿨을까요?</div>`;
@@ -310,17 +323,18 @@ P.fibo = (el, list, { myTeamId: me }) => {
   const rows = list.filter((a) => a.data.plants);
   const cols = [...FIBO_ROWS.map(([n]) => n), "cone"];
   el.innerHTML = `<div class="peek-sub">꽃잎 수별로 가족들이 찾은 식물을 모았어요.</div><div class="board5">${cols.map((c) => {
-    const items = c === "cone" ? rows.filter((a) => a.data.cw != null) : rows.filter((a) => a.data.plants[c]);
+    const items = c === "cone" ? rows.filter((a) => ok(a.data.cw) && ok(a.data.ccw)) : rows.filter((a) => a.data.plants[c]);
     return `<div class="col"><h5>${c === "cone" ? "솔방울" : c + "장"}</h5><div class="n">${items.length}팀</div>
       ${items.map((a) => `<div class="card-s ${a.teamId === me ? "mine" : ""}">${c === "cone" ? `${a.data.cw} · ${a.data.ccw}줄` : esc(a.data.plants[c])}<small>${esc(who(a, me))}</small></div>`).join("")}</div>`;
   }).join("")}</div>
   <div class="chart" style="margin-top:12px"><h4>가족들이 센 숫자 ★ <span class="muted">(꽃잎 수 또는 솔방울 나선 수)</span></h4>
-    ${dotStack(rows.map((a) => ({ v: a.data.star, mine: a.teamId === me })), { icon: "🌻" })}
+    ${dotStack(rows.filter((a) => ok(a.data.star)).map((a) => ({ v: a.data.star, mine: a.teamId === me })), { icon: "🌻" })}
     <div class="muted">3, 5, 8, 13, 21은 모두 피보나치 수예요. 가족들이 센 숫자가 피보나치 수에 얼마나 모였나요?</div></div>`;
 };
 
 P.golden = (el, list, { myTeamId: me }) => {
-  const rows = list.filter((a) => a.data.hand > 0);
+  const rows = list.filter((a) => a.data.hand > 0 && a.data.arm > 0);
+  if (!rows.length) { el.innerHTML = `<div class="empty">아직 두 길이를 모두 낸 가족이 없어요.</div>`; return; }
   const W = 340, H = 260, L = 50, B = 40;
   const hs = rows.map((a) => a.data.hand), as = rows.map((a) => a.data.arm);
   const loH = Math.max(0, Math.min(...hs) - 2), hiH = Math.max(...hs) + 2;
@@ -339,7 +353,7 @@ P.golden = (el, list, { myTeamId: me }) => {
     <div class="chart"><h4>손 길이와 손목~팔꿈치 길이 ★</h4><svg viewBox="0 0 ${W} ${H}">${g}</svg>
       <div class="muted">점선에 가까울수록 황금비에 가까워요. 주황 점이 우리 가족이에요.</div></div>
     <div class="chart"><h4>가족별 비 (손목~팔꿈치 ÷ 손)</h4>${hbars(rs.map((x) => ({ ...x, txt: "1 : " + fmt(x.v, 2) })), { max: 2.2 })}</div>
-    ${rows.some((a) => a.data.found1 || a.data.found2) ? `<h4 style="margin:14px 2px 8px">✨ 가족들이 찾은 황금비</h4><div class="bubbles">${rows.filter((a) => a.data.found1 || a.data.found2).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${[a.data.found1, a.data.found2].filter(Boolean).map(esc).join("<br>")}</div>`).join("")}</div>` : ""}`;
+    ${list.some((a) => a.data.found1 || a.data.found2) ? `<h4 style="margin:14px 2px 8px">✨ 가족들이 찾은 황금비</h4><div class="bubbles">${list.filter((a) => a.data.found1 || a.data.found2).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${[a.data.found1, a.data.found2].filter(Boolean).map(esc).join("<br>")}</div>`).join("")}</div>` : ""}`;
 };
 
 P.pento = (el, list, { myTeamId: me, config, times, admin }) => {
@@ -417,7 +431,8 @@ P.fun = (el, list, { myTeamId: me, config }) => {
 
 P.scale = (el) => { el.innerHTML = `<div class="empty">🔒 만족도는 선생님만 보는 문항이라 볼 수 없어요.</div>`; };
 
-P.comment = (el, list, { myTeamId: me }) => {
+P.comment = (el, list0, { myTeamId: me }) => {
+  const list = list0.filter((a) => a.data.text);
   el.innerHTML = list.length ? `<div class="cork">${[...list].reverse().map((a) => {
     const h = hash(a.teamId);
     return `<div class="postit ${a.teamId === me ? "mine" : ""}" style="background:${POSTIT[h % POSTIT.length]};transform:rotate(${(h % 9) - 4}deg)">
@@ -426,20 +441,21 @@ P.comment = (el, list, { myTeamId: me }) => {
 };
 
 /* 관리자가 추가한 문제 */
-P.number = (el, list, { myTeamId: me, q }) => {
+P.number = (el, list0, { myTeamId: me, q }) => {
+  const list = list0.filter((a) => ok(a.data.value));
   const vals = list.map((a) => a.data.value);
   el.innerHTML = `${stats([[fmt(avg(vals)), "평균"], [fmt(modeOf(vals).v), "가장 많은 답"], [list.length + "팀", "답한 가족"]])}
     <div class="chart">${dotStack(list.map((a) => ({ v: a.data.value, mine: a.teamId === me })), { unit: q.unit || "" })}</div>`;
 };
 P.text = (el, list, { myTeamId: me }) => {
-  el.innerHTML = `<div class="bubbles">${list.map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.text)}</div>`).join("")}</div>`;
+  el.innerHTML = `<div class="bubbles">${list.filter((a) => a.data.text).map((a) => `<div class="bubble ${a.teamId === me ? "mine" : ""}"><div class="who">${esc(who(a, me))}</div>${esc(a.data.text)}</div>`).join("")}</div>`;
 };
 P.choice = (el, list, { myTeamId: me, q }) => {
   const opts = (q.options || []).filter(Boolean);
   el.innerHTML = `<div class="chart">${voteBars(opts.map((o) => ({ name: o, items: list.filter((a) => a.data.pick === o) })), me)}</div>`;
 };
 P.photo = (el, list, { myTeamId: me }) => {
-  el.innerHTML = wall(list, me, (a) => a.data.photo, (a) => esc(who(a, me)));
+  el.innerHTML = wall(list.filter((a) => a.data.photo), me, (a) => a.data.photo, (a) => esc(who(a, me)));
 };
 
 export function renderPeek(el, q, list, ctx) {
