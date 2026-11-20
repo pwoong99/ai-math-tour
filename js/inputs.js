@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=3.15";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift, FIBS } from "./questions.js?v=3.15";
-import { PUZZLES } from "./puzzles.js?v=3.15";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer, spiralPad } from "./widgets.js?v=3.15";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.16";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift, FIBS } from "./questions.js?v=3.16";
+import { PUZZLES } from "./puzzles.js?v=3.16";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer, spiralPad } from "./widgets.js?v=3.16";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -445,7 +445,11 @@ R.quadrat = (el, q, { prev, config }) => {
 
   const aiBox = $(".q-ai");
   const drawAi = (state) => {
-    if (state === "busy") { aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요…<br><span class="muted">10~30초쯤 걸릴 수 있어요. 기다려 주세요!</span></div>`; return; }
+    if (state === "busy") {
+      aiBox.innerHTML = `<div class="loading" style="padding:16px"><div class="spin"></div>AI가 꽃을 세고 있어요… <b class="ai-sec">0초</b><br>
+        <span class="muted">보통 <b>30초~1분</b> 걸려요. 꽃이 많으면 더 오래 걸릴 수 있어요.<br>화면을 끄거나 다른 앱으로 가지 말고 기다려 주세요!<br>기다리는 동안 가족과 함께 직접 세어 보세요 👀</span></div>`;
+      return;
+    }
     if (st.photo && !st.aiManual && st.aiCount !== "") {
       aiBox.innerHTML = `${dotsHtml(st.photo, st.aiPoints, `AI: ${st.aiCount}송이`)}
         <div class="muted" style="margin-top:6px"><b>🤖 Gemini AI가 셌어요</b> · 빨간 점이 AI가 꽃이라고 본 곳이에요. 빠뜨리거나 두 번 센 꽃이 있나요?</div>`;
@@ -473,6 +477,7 @@ R.quadrat = (el, q, { prev, config }) => {
       if (!url) return toast("사진을 열지 못했어요.");
       ph.innerHTML = `<div class="cr"></div>
         <button type="button" class="btn orange block" style="margin-top:10px" data-go>🤖 이 영역을 AI에게 세어 달라고 하기</button>
+        <div class="muted" style="text-align:center;margin-top:4px">AI가 세는 데 30초~1분쯤 걸려요. 꽃이 많으면 더 걸릴 수 있어요.</div>
         <button type="button" class="btn gray block small" style="margin-top:6px" data-cancel>취소</button>`;
       crop = cropper(ph.querySelector(".cr"), url);
       ph.querySelector("[data-cancel]").onclick = () => { crop = null; drawPhoto(); };
@@ -488,7 +493,11 @@ R.quadrat = (el, q, { prev, config }) => {
     if (!st.photo) return;
     if (!config.gasUrl) { st.aiManual = true; st.aiErr = "AI 주소가 설정되지 않았어요"; drawAi("fail"); return; }
     drawAi("busy");
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 75000);
+    // 꽃이 많거나 보조 AI 모델로 다시 물어보면 1분을 넘길 수 있어서 3분까지 기다려요
+    const LIMIT = 180;
+    const t0 = Date.now();
+    const tick = setInterval(() => { const n = aiBox.querySelector(".ai-sec"); if (n) n.textContent = `${Math.round((Date.now() - t0) / 1000)}초`; }, 1000);
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), LIMIT * 1000);
     try {
       const res = await fetch(config.gasUrl, {
         method: "POST", body: JSON.stringify({ image: st.photo.split(",")[1] }), signal: ctl.signal
@@ -499,9 +508,10 @@ R.quadrat = (el, q, { prev, config }) => {
       drawAi(); formula();
     } catch (err) {
       console.warn(err);
-      st.aiErr = err.name === "AbortError" ? "응답이 너무 오래 걸렸어요 (75초)" : String(err.message || err).slice(0, 160);
+      st.aiErr = err.name === "AbortError" ? `응답이 너무 오래 걸렸어요 (${LIMIT / 60}분). 사진 영역을 조금 좁혀서 다시 해 보세요.`
+        : !navigator.onLine ? "인터넷이 끊겼어요." : String(err.message || err).slice(0, 200);
       st.aiManual = true; drawAi("fail");
-    } finally { clearTimeout(tm); }
+    } finally { clearTimeout(tm); clearInterval(tick); }
   }
   drawPhoto(); drawAi(); formula();
 

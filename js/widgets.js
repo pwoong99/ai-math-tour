@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=3.15";
-import { esc, toast, fileToJpeg } from "./fb.js?v=3.15";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=3.16";
+import { esc, toast, fileToJpeg } from "./fb.js?v=3.16";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 

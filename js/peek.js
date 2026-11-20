@@ -1,10 +1,10 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=3.15";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText, FIBS } from "./questions.js?v=3.15";
-import { PUZZLES } from "./puzzles.js?v=3.15";
-import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.15";
-import { SIGN_FIELDS } from "./inputs.js?v=3.15";
+import { esc } from "./fb.js?v=3.16";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText, FIBS } from "./questions.js?v=3.16";
+import { PUZZLES } from "./puzzles.js?v=3.16";
+import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.16";
+import { SIGN_FIELDS } from "./inputs.js?v=3.16";
 
 const PALETTE = ["#1f2a5c", "#e5484d", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];

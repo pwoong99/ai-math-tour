@@ -1,5 +1,5 @@
 // 사진(PNG)으로 저장하는 그림: 수료증, 관리자용 로그인 명단
-import { CENTER, EVENT_TITLE } from "./fb.js?v=3.15";
+import { CENTER, EVENT_TITLE } from "./fb.js?v=3.16";
 
 const FONT = `"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
 
