@@ -84,6 +84,12 @@ service cloud.firestore {
     match /mathTour_logins/{key} {
       allow get: if signedIn();
       allow list, write: if isTourAdmin();
+      // 가족이 비밀번호를 바꿀 때: 우리 팀으로 가는 새 열쇠 만들기 (이미 있는 열쇠는 덮어쓸 수 없어요)
+      allow create: if isTeam(request.resource.data.teamId)
+        && request.resource.data.session == mySession().session
+        && request.resource.data.keys().hasOnly(['teamId', 'session', 'changedAt']);
+      // 예전 열쇠 지우기: 이 기기가 지금 로그인한 열쇠만
+      allow delete: if isTeam(resource.data.teamId) && mySession().key == key;
     }
 
     // 기기 ↔ 팀 연결: 올바른 로그인 열쇠를 가진 기기만 만들 수 있어요
@@ -106,9 +112,12 @@ service cloud.firestore {
       );
     }
 
-    // 학교·학생 이름·비밀번호: 관리자만
+    // 학교·학생 이름·비밀번호: 관리자만 (가족은 비밀번호 바꾸기만)
     match /mathTour_teamsPrivate/{teamId} {
       allow read, write: if isTourAdmin();
+      // 가족이 비밀번호를 바꾸면 선생님 명단의 번호도 함께 바뀌어요 (읽기는 여전히 관리자만)
+      allow update: if isTeam(teamId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pw', 'key', 'pwChangedAt']);
     }
 
     // 답: 같은 시간대 가족이 엿볼 수 있게 읽기 허용, 쓰기는 자기 팀 답만

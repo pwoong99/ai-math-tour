@@ -3,13 +3,13 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.02";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.02";
-import { renderInput } from "./inputs.js?v=3.02";
-import { renderPeek } from "./peek.js?v=3.02";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.02";
-import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.02";
-import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.03";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.03";
+import { renderInput } from "./inputs.js?v=3.03";
+import { renderPeek } from "./peek.js?v=3.03";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.03";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.03";
+import { getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 const LS = "mathTour_login_v1";
@@ -105,7 +105,8 @@ $("btnLogin").onclick = async () => {
     const key = await loginKey(loginSession, school, name, Number(pw));
     const snap = await getDoc(doc(db, C.logins, key));
     if (!snap.exists()) { err.textContent = "학교, 이름, 비밀번호가 맞지 않아요. 다시 확인해 주세요."; return; }
-    const info = { session: loginSession, school, name, key, teamId: snap.data().teamId };
+    // 처음 받은 비밀번호 그대로면 목록 화면에서 바꾸라고 안내해요
+    const info = { session: loginSession, school, name, key, teamId: snap.data().teamId, pwDefault: pw === String(withDefaults(S.config).startPw) };
     await bindDevice(info);
     localStorage.setItem(LS, JSON.stringify(info));
     await enter(info);
@@ -145,6 +146,49 @@ async function enter(info) {
   });
   if (allDone()) showDone(); else openMission(firstOpen());
 }
+
+/* ── 비밀번호 바꾸기 ── */
+function openPw() {
+  $("pwOld").value = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwErr").textContent = "";
+  $("pwModal").classList.remove("hidden");
+  setTimeout(() => $("pwOld").focus(), 50);
+}
+const closePw = () => $("pwModal").classList.add("hidden");
+["pwOld", "pwNew", "pwNew2"].forEach((id) => $(id).addEventListener("input", (e) => e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4)));
+$("pwCancel").onclick = closePw;
+$("pwModal").addEventListener("click", (e) => { if (e.target.id === "pwModal") closePw(); });
+$("pwSave").onclick = async () => {
+  const err = $("pwErr"), oldPw = $("pwOld").value.trim(), newPw = $("pwNew").value.trim();
+  err.textContent = "";
+  if (!/^\d{4}$/.test(oldPw)) return err.textContent = "지금 쓰는 비밀번호 4자리를 써 주세요.";
+  const pe = checkPw(newPw); if (pe) return err.textContent = pe;
+  if (newPw !== $("pwNew2").value.trim()) return err.textContent = "새 비밀번호 두 칸이 서로 달라요. 다시 확인해 주세요.";
+  if (newPw === oldPw) return err.textContent = "지금 비밀번호와 다른 번호로 골라 주세요.";
+  if (newPw === String(withDefaults(S.config).startPw)) return err.textContent = "처음 받은 번호와 다른, 우리 가족만 아는 번호로 골라 주세요.";
+  $("pwSave").disabled = true;
+  try {
+    const me = S.me;
+    const oldKey = await loginKey(me.session, me.school, me.name, Number(oldPw));
+    if (oldKey !== me.key) { err.textContent = "지금 비밀번호가 맞지 않아요. 다시 확인해 주세요."; return; }
+    const newKey = await loginKey(me.session, me.school, me.name, Number(newPw));
+    // ① 새 로그인 열쇠 만들기 → ② 예전 열쇠 지우기 → ③ 이 기기 연결 바꾸기 → ④ 선생님 명단에 새 번호 남기기
+    try { await setDoc(doc(db, C.logins, newKey), { teamId: me.teamId, session: me.session, changedAt: serverTimestamp() }); }
+    catch (e) { console.warn(e); err.textContent = "이 번호로는 바꿀 수 없어요. 다른 번호를 골라 주세요."; return; }
+    await deleteDoc(doc(db, C.logins, oldKey));
+    const info = { ...me, key: newKey, pwDefault: false };
+    await bindDevice(info);
+    await updateDoc(doc(db, C.teamsPrivate, me.teamId), { pw: Number(newPw), key: newKey, pwChangedAt: serverTimestamp() }).catch((e) => console.warn("teamsPrivate", e));
+    S.me = info;
+    localStorage.setItem(LS, JSON.stringify(info));
+    closePw();
+    if (S.view === "list") renderList();
+    toast("🔑 비밀번호를 바꿨어요! 다음 로그인부터 새 번호를 써 주세요.");
+  } catch (e) {
+    console.error(e);
+    err.textContent = "바꾸지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.";
+  } finally { $("pwSave").disabled = false; }
+};
+$("btnPw").onclick = openPw;
 
 function logout() {
   S.unsub.forEach((u) => u()); S.unsub = [];
@@ -282,6 +326,10 @@ $("btnLogout").onclick = () => { if (confirm("로그아웃할까요? 지금까�
 function showList() { show("list"); renderList(); }
 function renderList() {
   const l = qs(), open = firstOpen();
+  $("pwNotice").innerHTML = S.me?.pwDefault ? `<div class="card pw-notice"><b>🔑 처음 받은 비밀번호를 쓰고 있어요</b>
+      <div class="muted" style="margin:4px 0 10px">다른 가족이 우리 미션에 들어오지 않도록, 우리 가족만 아는 숫자 4자리로 바꿔 주세요.</div>
+      <button type="button" class="btn small" data-pw>비밀번호 바꾸기</button></div>` : "";
+  $("pwNotice").querySelector("[data-pw]")?.addEventListener("click", openPw);
   let lastPlace = "";
   $("mList").innerHTML = l.map((q, i) => {
     const ok = solved(q), locked = i > open, cur = i === open;

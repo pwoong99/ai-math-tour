@@ -1,5 +1,5 @@
 // 우리가족 'AI투어 데이터 맵' — ★ 숫자 12개로 만드는 5장면 사진 (숫자 → 정리 → 그림 → 규칙 → 리포트)
-import { PLACES, FIBS, pentoSolved } from "./questions.js?v=3.02";
+import { PLACES, FIBS, pentoSolved } from "./questions.js?v=3.03";
 
 const FONT = `"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
 const W = 1080, H = 1350;

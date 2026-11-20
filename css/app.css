@@ -681,3 +681,8 @@ h4.sec small { color: var(--sub); }
 .partial-box { margin-top: 10px; background: #fff6c9; border: 2px dashed var(--navy); border-radius: 12px; padding: 10px 12px; color: var(--ink); font-weight: 600; font-size: 14px; white-space: normal; }
 .partial-box .btn { display: flex; margin: 8px auto 0; }
 .solved-tag.partial { background: #fff; color: var(--orange); border-color: var(--orange); }
+
+/* 비밀번호 바꾸기 */
+.modal { position: fixed; inset: 0; z-index: 80; background: rgba(20, 27, 61, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-card { width: min(100%, 420px); margin: 0; max-height: calc(100dvh - 32px); overflow: auto; }
+.pw-notice { background: #fff6c9; }

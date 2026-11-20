@@ -1,4 +1,4 @@
-import { PUZZLES } from "./puzzles.js?v=3.02";
+import { PUZZLES } from "./puzzles.js?v=3.03";
 // 미션 문제 정의 — 기본 문제(활동지 순서)와 관리자가 추가하는 문제 형식
 // 관리자 화면에서 순서·숨김·제목·안내 글을 바꾸면 mathTour_config/main 에 저장돼요.
 
@@ -104,6 +104,7 @@ export const DEFAULT_CONFIG = {
   pentoNeed: 3,         // count 방식에서 통과에 필요한 퍼즐 수
   pentoTimePublic: false, // 「팀별 발자취」에 가족별 걸린 시간 보여 주기
   pentoTimerShow: true,   // 가족 화면 펜토미노 미션에 타이머 보여 주기
+  startPw: 1121,          // 선생님이 처음 나눠 주는 비밀번호 (이 번호로 로그인하면 바꾸라고 안내해요)
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
   gasUrl: "https://script.google.com/macros/s/AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58/exec"
 };

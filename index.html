@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="AI수학투어">
   <meta name="format-detection" content="telephone=no">
-  <link rel="stylesheet" href="css/app.css?v=3.02">
+  <link rel="stylesheet" href="css/app.css?v=3.03">
 </head>
 <body>
   <header class="topbar">
@@ -69,9 +69,30 @@
     <!-- 미션 목록 -->
     <section id="v-list" class="hidden">
       <h2 style="margin:4px 2px 12px">📋 미션 목록</h2>
+      <div id="pwNotice"></div>
       <div id="mList" class="mlist"></div>
-      <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:20px">다른 가족으로 로그인하기</button>
+      <button id="btnPw" class="btn ghost block small" type="button" style="margin-top:20px">🔑 비밀번호 바꾸기</button>
+      <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:10px">다른 가족으로 로그인하기</button>
     </section>
+
+    <!-- 비밀번호 바꾸기 -->
+    <div id="pwModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+      <div class="card modal-card">
+        <h3 id="pwTitle" style="margin:0 0 6px">🔑 비밀번호 바꾸기</h3>
+        <p class="muted" style="margin:0 0 6px">우리 가족만 아는 숫자 4자리로 바꿔요. 바꾼 뒤에는 다른 기기에서도 새 번호로 로그인해요.</p>
+        <label class="fld" for="pwOld">지금 비밀번호</label>
+        <input id="pwOld" class="inp pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="4" placeholder="●●●●">
+        <label class="fld" for="pwNew">새 비밀번호 <small>(숫자 4자리, 0으로 시작하지 않게)</small></label>
+        <input id="pwNew" class="inp pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="4" placeholder="●●●●">
+        <label class="fld" for="pwNew2">새 비밀번호 한 번 더</label>
+        <input id="pwNew2" class="inp pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="4" placeholder="●●●●">
+        <div id="pwErr" class="err"></div>
+        <div class="row" style="gap:8px;margin-top:14px">
+          <button id="pwCancel" class="btn gray grow" type="button">취소</button>
+          <button id="pwSave" class="btn grow" type="button">바꾸기</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 완주 · 수료증 -->
     <section id="v-done" class="hidden">
@@ -116,6 +137,6 @@
     </div>
   </nav>
 
-  <script type="module" src="js/app.js?v=3.02"></script>
+  <script type="module" src="js/app.js?v=3.03"></script>
 </body>
 </html>
