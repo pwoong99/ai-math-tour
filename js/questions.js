@@ -1,4 +1,4 @@
-import { PUZZLES } from "./puzzles.js?v=3.03";
+import { PUZZLES } from "./puzzles.js?v=3.13";
 // 미션 문제 정의 — 기본 문제(활동지 순서)와 관리자가 추가하는 문제 형식
 // 관리자 화면에서 순서·숨김·제목·안내 글을 바꾸면 mathTour_config/main 에 저장돼요.
 
@@ -42,12 +42,12 @@ export const BUILTIN = {
     desc: "20cm × 20cm 방형구 안의 꽃을 직접 세고 AI에게도 세어 달라고 해요. 방형구 25개 = 1m × 1m = 1㎡ 이니까, 틀 안 꽃 수 × 25 = 1㎡당 꽃 수예요."
   },
   area: {
-    title: "핸드폰으로 꽃밭 넓이 재기", code: "3-3", place: "p3", icon: "📐", activity: true,
-    desc: "측정 앱, 지도 앱, 내 보폭 세 가지 방법으로 우리 가족이 정한 꽃밭의 넓이를 재고, 꽃밭 전체의 꽃 수를 어림해요."
+    title: "스페이스 허브 잔디밭에 국화를 심는다면?", code: "3-3", place: "p3", icon: "📐", activity: true,
+    desc: "스페이스 허브의 긴 초록 잔디밭에 국화를 심는다면 몇 송이를 심을 수 있을까요? 측정 앱, 지도 앱, 내 보폭 세 가지 방법으로 잔디밭 넓이를 재고, 앞에서 구한 방형구법의 1㎡당 꽃 수를 활용해 어림해요."
   },
   fibo: {
-    title: "자연 속 피보나치 수", code: "4-1", place: "p4", icon: "🌻", activity: true,
-    desc: "1, 1, 2, 3, 5, 8, 13, 21 … 앞의 두 수를 더하면 바로 뒤의 수가 되는 피보나치 수열! 꽃잎 수와 솔방울 나선에서 찾아봐요. 식물 인식 AI로 이름도 알아봐요. (꺾지 않고 눈으로만 세어요)"
+    title: "자연 속 피보나치 수 (솔방울)", code: "4-1", place: "p4", icon: "🌲", activity: true,
+    desc: "1, 1, 2, 3, 5, 8, 13, 21 … 앞의 두 수를 더하면 바로 뒤의 수가 되는 피보나치 수열! 솔방울을 뒤집어 아래쪽에서 보면 비늘이 시계 방향과 시계 반대 방향으로 나선을 만들어요. 나선이 몇 줄인지 세어 봐요."
   },
   golden: {
     title: "황금비율자로 황금비 찾기", code: "4-1", place: "p4", icon: "📏", activity: true,
@@ -104,6 +104,7 @@ export const DEFAULT_CONFIG = {
   pentoNeed: 3,         // count 방식에서 통과에 필요한 퍼즐 수
   pentoTimePublic: false, // 「팀별 발자취」에 가족별 걸린 시간 보여 주기
   pentoTimerShow: true,   // 가족 화면 펜토미노 미션에 타이머 보여 주기
+  lawnArea: 1400,         // 스페이스 허브 초록 잔디밭의 실제 넓이(㎡, 175m × 8m) — 가족이 답을 낸 뒤 비교용으로 보여 줘요
   startPw: 1121,          // 선생님이 처음 나눠 주는 비밀번호 (이 번호로 로그인하면 바꾸라고 안내해요)
   // AI 꽃 세기 Apps Script 웹앱 주소 (관리자 화면에서 바꿀 수 있어요)
   gasUrl: "https://script.google.com/macros/s/AKfycbyt01DVZvpM_9gmX4aNmFDlQXtAExeKE7Pt01fOgaXbbSf03cRKBt0fzrQB_6F9u58/exec"

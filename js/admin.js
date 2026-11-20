@@ -3,14 +3,14 @@ import {
   doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, onSnapshot,
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.03";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.03";
-import { STAR_ITEMS, starValues } from "./datamap.js?v=3.03";
-import { PUZZLES } from "./puzzles.js?v=3.03";
-import { miniGrid } from "./widgets.js?v=3.03";
-import { renderPeek } from "./peek.js?v=3.03";
-import { drawRoster, savePng } from "./cert.js?v=3.03";
+import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.13";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.13";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=3.13";
+import { PUZZLES } from "./puzzles.js?v=3.13";
+import { miniGrid } from "./widgets.js?v=3.13";
+import { renderPeek } from "./peek.js?v=3.13";
+import { drawRoster, savePng } from "./cert.js?v=3.13";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -29,8 +29,20 @@ onAuthStateChanged(auth, async (u) => {
 });
 $("aLogin").onclick = async () => {
   $("aErr").textContent = "";
-  try { await signInWithEmailAndPassword(auth, $("aEmail").value.trim(), $("aPw").value); }
-  catch (e) { console.warn(e); $("aErr").textContent = "이메일 또는 비밀번호가 맞지 않아요."; }
+  const email = $("aEmail").value.trim();
+  if (email && email !== ADMIN_EMAIL) { $("aErr").textContent = `관리자 계정은 ${ADMIN_EMAIL} 이에요. (예전 계정은 관리자가 아니에요)`; return; }
+  try { await signInWithEmailAndPassword(auth, email, $("aPw").value); }
+  catch (e) {
+    console.warn(e);
+    $("aErr").textContent = e?.code === "auth/too-many-requests"
+      ? "여러 번 틀려서 잠시 막혔어요. 몇 분 뒤 다시 하거나 「Google 계정으로 로그인」을 써 주세요."
+      : "이메일 또는 비밀번호가 맞지 않아요. 「Google 계정으로 로그인」을 쓰거나 아래에서 비밀번호 재설정 메일을 받아 주세요.";
+  }
+};
+$("aReset").onclick = async () => {
+  $("aErr").textContent = "";
+  try { await sendPasswordResetEmail(auth, ADMIN_EMAIL); $("aErr").textContent = `📧 ${ADMIN_EMAIL}로 비밀번호 재설정 메일을 보냈어요. 메일의 링크에서 새 비밀번호를 정해 주세요.`; }
+  catch (e) { console.warn(e); $("aErr").textContent = "재설정 메일을 보내지 못했어요. 「Google 계정으로 로그인」을 써 주세요."; }
 };
 $("aGoogle").onclick = async () => {
   $("aErr").textContent = "";
@@ -356,7 +368,7 @@ function renderQuestions(fillSettings) {
   const c = A.config;
   A.cpDraft = (c.ciphers || DEFAULT_CIPHERS).map((x) => ({ ...x }));
   renderCiphers();
-  $("sGas").value = c.gasUrl || ""; $("sTime").checked = !!c.pentoTimePublic;
+  $("sGas").value = c.gasUrl || ""; $("sLawn").value = c.lawnArea ?? ""; $("sTime").checked = !!c.pentoTimePublic;
   $("sTimer").checked = c.pentoTimerShow !== false;
   const ps = pentoSettings(c);
   A.pzSet = new Set(ps.list);
@@ -472,8 +484,10 @@ $("sSave").onclick = async () => {
   if (badCp >= 0) return toast(`암호 ${badCp + 1}번의 암호문을 영어 알파벳으로 써 주세요.`);
   const gas = $("sGas").value.trim();
   if (gas && !/^https:\/\/script\.google\.com\//.test(gas)) return toast("Apps Script 웹앱 주소(https://script.google.com/…)를 넣어 주세요.");
+  const lawn = Number($("sLawn").value);
+  if (!(lawn > 0)) return toast("잔디밭 실제 넓이를 0보다 큰 숫자로 써 주세요.");
   await updateDoc(doc(db, C.config, "main"), {
-    ciphers, gasUrl: gas, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroupNeed: pzMode === "group" ? gNeed : (Number(A.config.pentoGroupNeed) || 3), pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
+    ciphers, gasUrl: gas, lawnArea: lawn, pentoPuzzles: [...A.pzSet].sort((a, b) => a - b), pentoNeed: pzMode === "count" ? need : (Number(A.config.pentoNeed) || 3), pentoMode: pzMode, pentoGroupNeed: pzMode === "group" ? gNeed : (Number(A.config.pentoGroupNeed) || 3), pentoTimePublic: $("sTime").checked, pentoTimerShow: $("sTimer").checked
   });
   toast("설정을 저장했어요.");
 };
@@ -546,12 +560,12 @@ function summarizeFull(kind, d, priv) {
     case "cipher": return d.answers ? `${d.answers.map((t, i) => `${i + 1}) ${t}${d.keys?.[i] ? ` [KEY ${d.keys[i]}]` : ""}`).join(" ")} / 창작: KEY ${d.my?.key} ${d.my?.text}` : `${d.decoded || ""}`;
     case "latin": return `연습 ${d.s1 ? "완성" : "-"} / 설계 ${d.design ? "완성" : "-"} / 사진 있음${d.name ? " / " + d.name : ""}`;
     case "sign": return `사막여우 ${v(d.foxL1)}~${v(d.foxL2)}cm ${v(d.foxW)}kg / 설가타 ${v(d.sulL1)}~${v(d.sulL2)}cm ${v(d.sulA)}년 / 알다브라 ${v(d.aldA1)}~${v(d.aldA2)}년 ${v(d.aldH)}m`;
-    case "food": return d.q1 != null ? `표 ${d.g2}/${d.g4}/${d.g8}g·${d.n7}마리 / ★4마리 ${d.q1}g / ${d.q2}마리 / 과일 ${d.fruit}g 곡식 ${d.grain}g ${d.fruitPct}% / ★나이 ${d.age}세 ${d.times}배 ${d.pct}% / ${d.why}` : `${d.value}g`;
-    case "stride": return d.me1 != null ? `★1보 ${d.me1}cm (5보 ${d.me5}) / 부모님 ${d.par1}cm${d.sib1 != null ? ` / 동생 ${d.sib1}cm` : ""} / ${d.steps}보 ★${d.walk}m / ★지도 ${d.map}m / 차이 ${d.diff}m / ${d.why}` : `1보 ${d.step}cm / 보폭 ${d.walk}m / GPS ${d.gps}m`;
+    case "food": return d.q1 != null ? `표 ${d.g2}/${d.g4}/${d.g8}g·${d.n7}마리 / ★4마리 ${d.q1}g / ${d.q2}마리 / 과일 ${d.fruit}g 곡식 ${d.grain}g ${d.fruitPct}% / 나이 ${d.age}세 ${d.times}배 ${d.pct}% / ${d.why}` : `${d.value}g`;
+    case "stride": return `★1보 ${v(d.me1)}cm (5보 ${v(d.me5)})${d.par1 != null ? ` / 부모님 ${d.par1}cm` : ""}${d.sib1 != null ? ` / 동생 ${d.sib1}cm` : ""} / ★${v(d.steps)}보 → ${v(d.walk)}m / ★지도 ${v(d.map)}m / 차이 ${v(d.diff)}m / ${d.why || ""}`;
     case "quadrat": return `★직접 ${d.eye} / ★AI ${d.aiCount}${d.aiManual ? "(직접 입력)" : ""} / 기준 ${d.basis === "ai" ? "AI" : "직접"} / 1㎡ ${d.perM2}`;
-    case "area": return `★측정 앱 ${d.app}㎡ / 지도 ${v(d.map)}㎡ / 가로 ${d.ws}보 ${d.wm}m · 세로 ${d.hs}보 ${d.hm}m / ★보폭 넓이 ${d.stride}㎡ / 1㎡ ${d.perM2} × 넓이 = ${d.total}송이`;
-    case "fibo": return d.plants ? `${Object.entries(d.plants).map(([n, p]) => `${n}장 ${p}`).join(", ")}${d.cw != null ? ` / 솔방울 ${d.cw}·${d.ccw}줄` : ""} / ★${d.star}${d.starType === "cone" ? "줄" : "장"}` : `${d.plant} / ${d.petals}장`;
-    case "golden": return `★손 ${d.hand}cm / ★손목~팔꿈치 ${d.arm}cm (1 : ${Math.round(d.arm / d.hand * 100) / 100})${d.found1 ? ` / ${d.found1}` : ""}${d.found2 ? ` / ${d.found2}` : ""}`;
+    case "area": return `측정 앱 ${v(d.app)}㎡ / 지도 ${v(d.map)}㎡ / 보폭 ${v(d.stride)}㎡ (가로 ${v(d.ws)}보 ${v(d.wm)}m · 세로 ${v(d.hs)}보 ${v(d.hm)}m) / ★가장 믿는 값 ${v(d.bestArea)}㎡ / 1㎡ ${v(d.perM2)} × 넓이 = ${v(d.total)}송이`;
+    case "fibo": return `★시계 방향 ${v(d.cw)}줄 / ★시계 반대 방향 ${v(d.ccw)}줄${d.photo ? ` / 사진${d.strokes?.length ? `·그린 선 ${d.strokes.length}개` : ""}` : ""}`;
+    case "golden": return `손 ${v(d.hand)}cm / 손목~팔꿈치 ${v(d.arm)}cm${d.hand > 0 && d.arm > 0 ? ` (1 : ${Math.round(d.arm / d.hand * 100) / 100})` : ""}${d.found1 ? ` / ${d.found1}` : ""}`;
     case "pento": { const sv = Object.keys(pentoSolved(d)).map((i) => PUZZLES[i]?.name).filter(Boolean); return `${sv.length}개 완성 (${sv.join(", ")})${priv?.seconds != null ? ` / ${priv.seconds}초` : ""}`; }
     case "fun": return (d.picks || []).map((id) => qTitle(A.config.questions.find((q) => q.id === id) || { kind: "", title: id })).join(" · ");
     case "scale": return priv?.value != null ? `${priv.value}점` : "제출";
@@ -583,7 +597,7 @@ $("rCsv").onclick = async () => {
   setTimeout(() => URL.revokeObjectURL(url), 20000);
 };
 
-// ★ 데이터 맵 숫자: 가족 한 줄에 12개
+// ★ 데이터 맵 숫자: 가족 한 줄에 9개
 $("rStar").onclick = async () => {
   const [a] = await Promise.all([getDocs(collection(db, C.answers)), loadAllPriv()]);
   const kindOf = Object.fromEntries(A.config.questions.map((q) => [q.id, q.kind]));

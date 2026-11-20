@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=3.03";
-import { esc, toast } from "./fb.js?v=3.03";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=3.13";
+import { esc, toast, fileToJpeg } from "./fb.js?v=3.13";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -414,4 +414,101 @@ export function eulerTracer(el, fig, prev, onChange = () => {}) {
   };
   draw();
   return { get: () => ({ ok: ok(), path, edges }) };
+}
+
+/* ───────── 솔방울 사진에 나선 그리기 ─────────
+   빨강 = 시계 방향 나선, 파랑 = 시계 반대 방향 나선 (워크북 그림과 같은 색) */
+export const SPIRAL_COLORS = { r: "#e53935", b: "#1e66d0" };
+export function spiralPad(holder, prev, onChange = () => {}) {
+  let photo = prev?.photo || "";
+  let strokes = (prev?.strokes || []).map((s) => ({ c: s.c, p: s.p.map((q) => [...q]) }));
+  let pen = "r", img = null, drawing = null;
+  holder.innerHTML = `
+    <div class="sp-wrap">
+      <div class="sp-stage"><canvas class="sp-cv" aria-label="솔방울 사진 위에 나선 그리기"></canvas>
+        <div class="sp-empty">솔방울을 뒤집어 아래쪽(줄기 쪽)에서 찍은 사진을 올려요.</div></div>
+      <div class="sp-tools">
+        <button type="button" class="sp-pen on" data-pen="r"><i style="background:${SPIRAL_COLORS.r}"></i>시계 방향</button>
+        <button type="button" class="sp-pen" data-pen="b"><i style="background:${SPIRAL_COLORS.b}"></i>시계 반대 방향</button>
+      </div>
+      <div class="sp-count muted"></div>
+      <div class="row" style="gap:6px;justify-content:center;flex-wrap:wrap">
+        <label class="btn ghost small">📷 <span class="sp-ph">${photo ? "사진 다시 올리기" : "솔방울 사진 올리기"}</span><input type="file" accept="image/*" class="hidden"></label>
+        <button type="button" class="btn small gray" data-undo>↶ 되돌리기</button>
+        <button type="button" class="btn small gray" data-clear>모두 지우기</button>
+      </div>
+    </div>`;
+  const cv = holder.querySelector(".sp-cv"), ctx = cv.getContext("2d"), stage = holder.querySelector(".sp-stage");
+  const counts = () => ({ r: strokes.filter((s) => s.c === "r").length, b: strokes.filter((s) => s.c === "b").length });
+  const draw = () => {
+    const w = stage.clientWidth || 320;
+    const h = img ? Math.round(w * img.naturalHeight / img.naturalWidth) : 0;
+    const dpr = window.devicePixelRatio || 1;
+    stage.classList.toggle("has", !!img);
+    if (!img) { cv.width = cv.height = 0; cv.style.height = "0px"; }
+    else {
+      cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + "px"; cv.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.drawImage(img, 0, 0, w, h);
+      paint(ctx, strokes, w, h, 4);
+    }
+    const c = counts();
+    holder.querySelector(".sp-count").innerHTML = img ? `그린 선: <b style="color:${SPIRAL_COLORS.r}">시계 방향 ${c.r}줄</b> · <b style="color:${SPIRAL_COLORS.b}">시계 반대 방향 ${c.b}줄</b>` : "";
+  };
+  const paint = (g, list, w, h, lw) => list.forEach((s) => {
+    if (s.p.length < 2) return;
+    g.strokeStyle = SPIRAL_COLORS[s.c]; g.lineWidth = lw; g.lineCap = "round"; g.lineJoin = "round";
+    g.beginPath(); g.moveTo(s.p[0][0] * w, s.p[0][1] * h);
+    s.p.slice(1).forEach(([x, y]) => g.lineTo(x * w, y * h));
+    g.stroke();
+  });
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * 1000) / 1000, Math.round((e.clientY - r.top) / r.height * 1000) / 1000]; };
+  cv.addEventListener("pointerdown", (e) => {
+    if (!img) return;
+    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    drawing = { c: pen, p: [pt(e)] }; strokes.push(drawing);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    const p = pt(e), l = drawing.p.at(-1);
+    if (Math.hypot(p[0] - l[0], p[1] - l[1]) < 0.006) return;
+    drawing.p.push(p); draw();
+  });
+  const end = () => {
+    if (!drawing) return;
+    if (drawing.p.length < 3) strokes.pop(); // 콕 찍은 점은 선으로 치지 않아요
+    drawing = null; draw(); onChange(counts());
+  };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  holder.querySelectorAll(".sp-pen").forEach((b) => b.onclick = () => {
+    pen = b.dataset.pen; holder.querySelectorAll(".sp-pen").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  holder.querySelector("[data-undo]").onclick = () => { strokes.pop(); draw(); onChange(counts()); };
+  holder.querySelector("[data-clear]").onclick = () => { if (!strokes.length || confirm("그린 선을 모두 지울까요?")) { strokes = []; draw(); onChange(counts()); } };
+  const load = (url) => new Promise((res) => { const i = new Image(); i.onload = () => { img = i; draw(); res(); }; i.onerror = () => res(); i.src = url; });
+  holder.querySelector("input[type=file]").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      photo = await fileToJpeg(f, 900, 0.72);
+      if (strokes.length && !confirm("새 사진을 올리면 그린 선이 지워져요. 바꿀까요?")) return;
+      strokes = []; await load(photo);
+      holder.querySelector(".sp-ph").textContent = "사진 다시 올리기";
+      onChange(counts());
+    } catch { toast("사진을 열지 못했어요. 다른 사진으로 해 볼까요?"); }
+  };
+  if (photo) load(photo);
+  new ResizeObserver(() => draw()).observe(stage);
+  return {
+    counts,
+    get photo() { return photo; },
+    get strokes() { return strokes; },
+    // 「팀별 발자취」에 보여 줄 그림 (사진 + 그린 선)
+    composite() {
+      if (!img) return "";
+      const w = 720, h = Math.round(w * img.naturalHeight / img.naturalWidth);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const g = c.getContext("2d"); g.drawImage(img, 0, 0, w, h); paint(g, strokes, w, h, 6);
+      return c.toDataURL("image/jpeg", 0.72);
+    }
+  };
 }

@@ -1,10 +1,10 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=3.03";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText } from "./questions.js?v=3.03";
-import { PUZZLES } from "./puzzles.js?v=3.03";
-import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.03";
-import { SIGN_FIELDS, FIBO_ROWS } from "./inputs.js?v=3.03";
+import { esc } from "./fb.js?v=3.13";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText, FIBS } from "./questions.js?v=3.13";
+import { PUZZLES } from "./puzzles.js?v=3.13";
+import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.13";
+import { SIGN_FIELDS } from "./inputs.js?v=3.13";
 
 const PALETTE = ["#1f2a5c", "#e5484d", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
@@ -297,39 +297,54 @@ P.quadrat = (el, list, { myTeamId: me }) => {
   });
 };
 
-P.area = (el, list, { myTeamId: me }) => {
+P.area = (el, list, { myTeamId: me, config, admin }) => {
   const allA = [...list].sort(lblSort);
-  tabs(el, ["📐 세 가지 방법", "🌼 꽃밭 전체 꽃 수"], (t, body) => {
+  const L = Number(config.lawnArea) || 0;
+  const show = admin || list.some((a) => a.teamId === me); // 우리 답을 내면 실제 넓이 공개
+  const WAY = { app: "측정 앱", map: "지도 앱", stride: "보폭" };
+  tabs(el, ["📐 잔디밭 넓이", "🌼 국화 몇 송이?"], (t, body) => {
     if (t === 0) {
-      const rows = allA.filter((a) => ok(a.data.app) && ok(a.data.stride));
-      const mx = Math.max(1, ...rows.flatMap((a) => [a.data.app, a.data.map || 0, a.data.stride]));
-      body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.app))) + "㎡", "측정 앱 평균 ★"], [fmt(avg(rows.map((a) => a.data.stride))) + "㎡", "보폭 넓이 평균 ★"], [fmt(avg(rows.map((a) => Math.abs(a.data.app - a.data.stride)))) + "㎡", "평균 차이"]])}
-        <div class="chart"><h4>같은 꽃밭, 방법마다 넓이가 같을까?</h4>
-          <div class="legend"><span><i style="background:#1f2a5c"></i>측정 앱</span><span><i style="background:#3a7bd5"></i>지도 앱</span><span><i style="background:#e5484d"></i>보폭</span></div>
-          ${rows.map((a) => `<div style="margin:8px 0"><div style="font-weight:800;font-size:14px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
-            ${hbars([{ name: "측정 앱", v: a.data.app, txt: a.data.app + "㎡" }], { max: mx, color: "#1f2a5c", nameW: 58 })}
-            ${ok(a.data.map) ? hbars([{ name: "지도 앱", v: a.data.map, txt: a.data.map + "㎡" }], { max: mx, color: "#3a7bd5", nameW: 58 }) : ""}
-            ${hbars([{ name: "보폭", v: a.data.stride, txt: a.data.stride + "㎡" }], { max: mx, color: "#e5484d", nameW: 58 })}</div>`).join("")}</div>`;
+      const rows = allA.filter((a) => ok(a.data.bestArea));
+      const mx = Math.max(1, L, ...rows.flatMap((a) => [a.data.app || 0, a.data.map || 0, a.data.stride || 0]));
+      const near = show && L ? [...rows].sort((x, y) => Math.abs(x.data.bestArea - L) - Math.abs(y.data.bestArea - L))[0] : null;
+      const cnt = Object.fromEntries(Object.keys(WAY).map((k) => [k, rows.filter((a) => a.data.best === k).length]));
+      body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.bestArea)), 0) + "㎡", "가족들이 믿은 넓이 평균 ★"],
+          [show && L ? fmt(L, 0) + "㎡" : "🔒", show && L ? "실제 넓이 (175m × 8m)" : "답을 내면 실제 넓이 공개"], [rows.length + "팀", "답을 낸 가족"]])}
+        ${near ? `<div class="card" style="text-align:center">🎯 실제 넓이에 가장 가까운 가족: <b>${esc(who(near, me))}</b> (${fmt(near.data.bestArea, 1)}㎡ · ${WAY[near.data.best] || ""})</div>` : ""}
+        <div class="chart"><h4>어떤 방법을 가장 믿었을까?</h4>${voteBars(Object.entries(WAY).map(([k, n]) => ({ name: n, items: rows.filter((a) => a.data.best === k) })), me)}</div>
+        <div class="chart"><h4>방법마다 잰 넓이 ${show && L ? `<span class="muted">· 초록 선 = 실제 ${fmt(L, 0)}㎡</span>` : ""}</h4>
+          <div class="legend"><span><i style="background:#1f2a5c"></i>측정 앱</span><span><i style="background:#3a7bd5"></i>지도 앱</span><span><i style="background:#e5484d"></i>보폭</span><span>★ 가장 믿는 값</span></div>
+          ${rows.map((a) => `<div style="margin:8px 0;position:relative"><div style="font-weight:800;font-size:14px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}</div>
+            ${Object.entries(WAY).filter(([k]) => ok(a.data[k])).map(([k, n]) => hbars([{ name: (a.data.best === k ? "★ " : "") + n, v: a.data[k], txt: a.data[k] + "㎡" }], { max: mx, color: { app: "#1f2a5c", map: "#3a7bd5", stride: "#e5484d" }[k], nameW: 66 })).join("")}
+          </div>`).join("")}
+          ${show && L ? `<div class="muted">실제 넓이 ${fmt(L, 0)}㎡는 막대 길이 ${Math.round(L / mx * 100)}% 자리예요.</div>` : ""}</div>`;
       return;
     }
     const rows = allA.filter((a) => ok(a.data.total));
-    body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.total)), 0) + "송이", "우리 모두의 추정 (평균)"], [rows.length + "팀", "답을 낸 가족"]])}
-      <div class="chart"><h4>꽃밭 전체 꽃 수 어림 (1㎡당 꽃 수 × 넓이)</h4>${hbars(rows.map((a) => ({ name: who(a, me), v: a.data.total, txt: `${fmt(a.data.total, 0)}송이`, mine: a.teamId === me })).sort((x, y) => y.v - x.v), {})}</div>
-      <div class="muted">가족마다 고른 꽃밭이 달라요. 넓이와 1㎡당 꽃 수 중 무엇이 결과를 더 크게 바꿨을까요?</div>`;
+    body.innerHTML = `${stats([[fmt(avg(rows.map((a) => a.data.total)), 0) + "송이", "우리 모두의 어림 (평균)"], [rows.length + "팀", "답을 낸 가족"]])}
+      <div class="chart"><h4>잔디밭에 심을 수 있는 국화 (1㎡당 꽃 수 × 넓이)</h4>${hbars(rows.map((a) => ({ name: who(a, me), v: a.data.total, txt: `${fmt(a.data.total, 0)}송이`, mine: a.teamId === me })).sort((x, y) => y.v - x.v), {})}</div>
+      ${show && L ? `<div class="card">📐 실제 넓이 <b>${fmt(L, 0)}㎡</b>로 계산하면? ${rows.filter((a) => ok(a.data.perM2)).map((a) => `<div style="margin-top:4px" class="${a.teamId === me ? "me" : ""}">${esc(who(a, me))}: ${fmt(a.data.perM2, 0)} × ${fmt(L, 0)} = <b>${fmt(a.data.perM2 * L, 0)}송이</b></div>`).join("")}</div>` : ""}
+      <div class="muted">넓이와 1㎡당 꽃 수 중 무엇이 결과를 더 크게 바꿨을까요?</div>`;
   });
 };
 
 P.fibo = (el, list, { myTeamId: me }) => {
-  const rows = list.filter((a) => a.data.plants);
-  const cols = [...FIBO_ROWS.map(([n]) => n), "cone"];
-  el.innerHTML = `<div class="peek-sub">꽃잎 수별로 가족들이 찾은 식물을 모았어요.</div><div class="board5">${cols.map((c) => {
-    const items = c === "cone" ? rows.filter((a) => ok(a.data.cw) && ok(a.data.ccw)) : rows.filter((a) => a.data.plants[c]);
-    return `<div class="col"><h5>${c === "cone" ? "솔방울" : c + "장"}</h5><div class="n">${items.length}팀</div>
-      ${items.map((a) => `<div class="card-s ${a.teamId === me ? "mine" : ""}">${c === "cone" ? `${a.data.cw} · ${a.data.ccw}줄` : esc(a.data.plants[c])}<small>${esc(who(a, me))}</small></div>`).join("")}</div>`;
-  }).join("")}</div>
-  <div class="chart" style="margin-top:12px"><h4>가족들이 센 숫자 ★ <span class="muted">(꽃잎 수 또는 솔방울 나선 수)</span></h4>
-    ${dotStack(rows.filter((a) => ok(a.data.star)).map((a) => ({ v: a.data.star, mine: a.teamId === me })), { icon: "🌻" })}
-    <div class="muted">3, 5, 8, 13, 21은 모두 피보나치 수예요. 가족들이 센 숫자가 피보나치 수에 얼마나 모였나요?</div></div>`;
+  const rows = list.filter((a) => ok(a.data.cw) && ok(a.data.ccw));
+  const nb = (a) => { const lo = Math.min(a.data.cw, a.data.ccw), hi = Math.max(a.data.cw, a.data.ccw), i = FIBS.indexOf(lo); return i >= 0 && FIBS[i + 1] === hi; };
+  const pairs = new Map();
+  rows.forEach((a) => { const k = `시계 ${a.data.cw}줄 · 반대 ${a.data.ccw}줄`; if (!pairs.has(k)) pairs.set(k, []); pairs.get(k).push(a); });
+  tabs(el, ["🌲 솔방울 사진", "나선 수"], (t, body) => {
+    if (t === 0) {
+      body.innerHTML = `<div class="peek-sub">가족들이 솔방울 사진 위에 그린 나선이에요. 빨강 = 시계 방향, 파랑 = 시계 반대 방향.</div>` +
+        wall(list.filter((a) => a.data.drawn || a.data.photo), me, (a) => a.data.drawn || a.data.photo, (a) => `${esc(who(a, me))}${ok(a.data.cw) ? `<small>${a.data.cw} · ${a.data.ccw}줄</small>` : ""}`);
+      return;
+    }
+    body.innerHTML = `${stats([[rows.filter(nb).length + " / " + rows.length + "팀", "이웃한 피보나치 수가 나온 가족"], [fmt(avg(rows.map((a) => a.data.cw)), 1) + "줄", "시계 방향 평균 ★"], [fmt(avg(rows.map((a) => a.data.ccw)), 1) + "줄", "시계 반대 방향 평균 ★"]])}
+      <div class="chart"><h4>가족들이 센 나선 수 짝</h4>${voteBars([...pairs.entries()].sort((x, y) => y[1].length - x[1].length).map(([k, items]) => ({ name: (nb(items[0]) ? "✨ " : "") + k, items })), me)}
+        <div class="muted">✨ 표시는 5·8, 8·13처럼 이웃한 피보나치 수예요.</div></div>
+      <div class="chart"><h4>시계 방향 나선 수 ★</h4>${dotStack(rows.map((a) => ({ v: a.data.cw, mine: a.teamId === me })), { unit: "줄", icon: "🌲" })}</div>
+      <div class="chart"><h4>시계 반대 방향 나선 수 ★</h4>${dotStack(rows.map((a) => ({ v: a.data.ccw, mine: a.teamId === me })), { unit: "줄", icon: "🌲" })}</div>`;
+  });
 };
 
 P.golden = (el, list, { myTeamId: me }) => {
@@ -469,10 +484,11 @@ export function renderPeek(el, q, list, ctx) {
     const n = e.target.closest("[data-zoom]");
     if (!n || !el.contains(n)) return;
     const a = list.find((x) => x.teamId === n.dataset.zoom);
-    if (!a?.data?.photo) return;
+    const pic = a?.data?.drawn || a?.data?.photo;
+    if (!pic) return;
     const z = document.createElement("div");
     z.className = "zoom";
-    const body = q.kind === "quadrat" ? dotsHtml(a.data.photo, a.data.aiManual ? [] : a.data.aiPoints, `🤖 ${a.data.aiCount}송이`) : `<img src="${a.data.photo}" style="width:100%;border-radius:10px">`;
+    const body = q.kind === "quadrat" ? dotsHtml(a.data.photo, a.data.aiManual ? [] : a.data.aiPoints, `🤖 ${a.data.aiCount}송이`) : `<img src="${pic}" style="width:100%;border-radius:10px">`;
     z.innerHTML = `<div>${body}<div class="cap">${esc(who(a, ctx.myTeamId))}${a.data.name ? " · " + esc(a.data.name) : ""}</div></div>`;
     z.onclick = () => z.remove();
     document.body.appendChild(z);

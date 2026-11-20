@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=3.03";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift } from "./questions.js?v=3.03";
-import { PUZZLES } from "./puzzles.js?v=3.03";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer } from "./widgets.js?v=3.03";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.13";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift, FIBS } from "./questions.js?v=3.13";
+import { PUZZLES } from "./puzzles.js?v=3.13";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer, spiralPad } from "./widgets.js?v=3.13";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -308,7 +308,7 @@ R.food = (el, q, { prev }) => {
     <div class="calc">곡식 = 500 × 2/5 = ${mini("f_gr", p.grain, { w: 72 })} g</div>
     <div class="calc">과일은 전체의 ${mini("f_fp", p.fruitPct, { w: 64 })} %</div>
     ${sec("③ 수명 비교", "알다브라 코끼리거북의 최대 기록 255년")}
-    <div class="calc">내 나이 ${star} 만 ${mini("f_age", p.age, { w: 56, int: true })} 세</div>
+    <div class="calc">내 나이 만 ${mini("f_age", p.age, { w: 56, int: true })} 세</div>
     <div class="calc">내 나이 : 255 = 1 : □ → 거북은 나의 약 ${mini("f_x", p.times, { w: 64 })} 배</div>
     <div class="calc">거북 기록에서 나는 약 ${mini("f_pct", p.pct, { w: 64 })} %를 살았어요</div>
     <label class="fld" for="f_talk">생각 넓히기 (가족 토론) <small>선택</small></label>
@@ -350,10 +350,11 @@ R.food = (el, q, { prev }) => {
 };
 
 /* 3-1. 내 보폭으로 재어보는 산책로 */
+const WB = "img/wb/";
+const wbImg = (f, alt, style = "") => `<img src="${WB}${f}" alt="${esc(alt)}" class="wb-img" style="${style}" loading="lazy">`;
 R.stride = (el, q, { prev }) => {
   const p = prev || {};
-  const who = [["me", "학생(나)", false], ["par", "부모님", false], ["sib", "동생(선택)", true]];
-  let photo = p.photo || "";
+  const who = [["me", "학생(나)", false], ["par", "부모님(선택)", true], ["sib", "동생(선택)", true]];
   el.innerHTML = `
     ${sec("내 1보 재기", "5보(10걸음) 걸은 거리 ÷ 5 = 1보")}
     <div class="stable"><div class="h">측정 대상</div><div class="h">5보 길이</div><div class="h">1보 길이(÷5)</div>
@@ -361,45 +362,53 @@ R.stride = (el, q, { prev }) => {
         <div>${mini("st_" + k + "5", p[k + "5"], { w: 70 })} cm</div><div>${mini("st_" + k + "1", p[k + "1"], { w: 70 })} cm</div>`).join("")}</div>
     <div class="muted st-hint"></div>
     ${sec("어린이동물원 ~ 스페이스 허브 가는 길 측정해 보기")}
+    <div class="wb-pair">${wbImg("route_photo.jpg", "측정할 산책로")}${wbImg("route_map.jpg", "측정 구간 (빨간 점선)")}</div>
+    <div class="muted" style="text-align:center;margin-top:4px">빨간 점선이 우리가 잴 구간이에요.</div>
     <div class="qline">1. 이 구간을 내 보폭으로 걸었어요 ${star}
-      <div class="calc">${mini("st_steps", p.steps, { w: 72, int: true })} 보 × 1보 <span class="st-one">□</span> cm = ${mini("st_walk", p.walk, { w: 80 })} m</div></div>
+      <div class="calc">${mini("st_steps", p.steps, { w: 72, int: true })} 보 × 1보 <span class="st-one">□</span> cm = <b class="st-walk">□</b> m <small class="muted">(자동 계산)</small></div></div>
     <div class="qline">2. 지도 앱(네이버지도·카카오맵)의 위성사진에서 점을 이어 잰 거리 ${star}
       <div class="calc">${mini("st_map", p.map, { w: 80 })} m</div></div>
-    <div class="ph"></div>
+    <div class="howto"><b>📍 지도 앱 측정 방법 (카카오맵)</b>
+      <ol><li>시작점을 꾹 눌러요.</li><li>「거리재기」 버튼을 눌러요.</li><li>끝 지점을 눌러요.</li></ol>
+      <div class="wb-pair">${wbImg("kakao1.jpg", "카카오맵 거리재기 버튼")}${wbImg("kakao2.jpg", "카카오맵 거리재기 결과")}</div></div>
     <div class="qline">3. AI·디지털과의 비교: 내 보폭으로 구한 거리와 지도 앱 거리의 차이
       <div class="calc">${mini("st_diff", p.diff, { w: 80 })} m</div></div>
     <label class="fld" for="st_why">오차가 생긴 까닭을 가족과 이야기해요</label>
     <textarea id="st_why" class="inp" rows="2" maxlength="200" placeholder="우리 가족 생각">${esc(p.why || "")}</textarea>
     <div class="family-tip">가족 함께해요 ▶ 5보를 걷는 동안 학생은 앞을 보고, 부모님이 시작·끝 뒤꿈치 위치를 표시해 주세요.</div>`;
+  // 보폭 거리(m) = 보 수 × 1보(cm) ÷ 100 — 앱이 계산해요
+  const walkOf = () => { const s = numOr(el, "st_steps"), o = numOr(el, "st_me1"); return s != null && o != null ? r2(s * o / 100) : null; };
   const live = () => {
     const h = who.map(([k, n]) => { const v = numOf(el, `st_${k}5`); return v ? `${n.replace("(선택)", "")} ${r2(v)} ÷ 5 = ${r2(v / 5)}cm` : ""; }).filter(Boolean);
     el.querySelector(".st-hint").textContent = h.length ? "계산 도우미: " + h.join(" · ") : "";
-    const one = numOf(el, "st_me1");
-    el.querySelector(".st-one").textContent = one ?? "□";
+    el.querySelector(".st-one").textContent = numOr(el, "st_me1") ?? "□";
+    el.querySelector(".st-walk").textContent = walkOf() ?? "□";
   };
   el.querySelectorAll("input").forEach((i) => i.addEventListener("input", live));
   live();
-  const ph = el.querySelector(".ph");
-  ph.innerHTML = `<div class="muted" style="margin:-2px 0 4px">지도 앱 화면 사진 <small>(선택)</small></div><div class="phx"></div>`;
-  photoPicker(ph.querySelector(".phx"), photo, (u) => photo = u);
+  const keys = ["me5", "me1", "par5", "par1", "sib5", "sib1", "steps", "map", "diff"];
   return {
     draft() {
-      const d = { photo, why: valOf(el, "st_why") };
-      ["me5", "me1", "par5", "par1", "sib5", "sib1", "steps", "walk", "map", "diff"].forEach((k) => d[k] = numOr(el, "st_" + k));
+      const d = { why: valOf(el, "st_why") };
+      keys.forEach((k) => d[k] = numOr(el, "st_" + k));
+      d.walk = walkOf();
       return d;
     },
     collect() {
-      const sib = ["st_sib5", "st_sib1"].map((id) => el.querySelector("#" + id).value.trim());
-      const e = checkAll(el, [["st_me5", "학생 5보 길이", "cm"], ["st_me1", "학생 1보 길이", "cm"], ["st_par5", "부모님 5보 길이", "cm"], ["st_par1", "부모님 1보 길이", "cm"],
+      const e = checkAll(el, [["st_me5", "학생 5보 길이", "cm"], ["st_me1", "학생 1보 길이", "cm"],
+        ["st_par5", "부모님 5보 길이", "cm", false, true], ["st_par1", "부모님 1보 길이", "cm", false, true],
         ["st_sib5", "동생 5보 길이", "cm", false, true], ["st_sib1", "동생 1보 길이", "cm", false, true],
-        ["st_steps", "구간 보수", "보", true], ["st_walk", "보폭으로 잰 거리", "m"], ["st_map", "지도 앱 거리", "m"], ["st_diff", "거리 차이", "m"]]);
+        ["st_steps", "구간 보 수", "보", true], ["st_map", "지도 앱 거리", "m"], ["st_diff", "거리 차이", "m"]]);
       if (e) return fail(e);
-      if (!!sib[0] !== !!sib[1]) return fail("동생도 재었다면 5보 길이와 1보 길이를 모두 써 주세요.");
-      const why = el.querySelector("#st_why").value.trim();
+      for (const [k, n] of [["par", "부모님"], ["sib", "동생"]]) {
+        const a = valOf(el, `st_${k}5`), b = valOf(el, `st_${k}1`);
+        if (!!a !== !!b) return fail(`${n}도 재었다면 5보 길이와 1보 길이를 모두 써 주세요.`);
+      }
+      const why = valOf(el, "st_why");
       if (why.length < 2) return fail("오차가 생긴 까닭을 한 줄로 써 주세요.");
-      const d = { photo };
-      ["me5", "me1", "par5", "par1", "sib5", "sib1", "steps", "walk", "map", "diff"].forEach((k) => d[k] = numOf(el, "st_" + k));
-      d.why = why;
+      const d = { why };
+      keys.forEach((k) => d[k] = numOr(el, "st_" + k));
+      d.walk = walkOf();
       return { ok: true, data: d };
     }
   };
@@ -520,90 +529,106 @@ R.quadrat = (el, q, { prev, config }) => {
   };
 };
 
-/* 3-3. 핸드폰으로 꽃밭 넓이 재기 */
+/* 3-3. 스페이스 허브 초록 잔디밭에 국화를 심는다면? */
+const AREA_WAYS = [["app", "① 측정 앱"], ["map", "② 지도 앱"], ["stride", "③ 보폭"]];
 R.area = (el, q, { prev, mine }) => {
   const p = prev || {};
   const one = mine?.stride?.me1;          // 3-1에서 잰 내 1보
   const perM2 = p.perM2 ?? mine?.quadrat?.perM2; // 3-2에서 구한 1㎡당 꽃 수
-  let photo = p.photo || "";
+  let best = p.best || "";
   el.innerHTML = `
-    ${sec("방법 ① 측정 앱", "네 모서리를 차례로 콕!")}
-    <div class="calc">${mini("a_app", p.app, { w: 90 })} ㎡ ${star}</div>
-    ${sec("방법 ② 지도 앱 면적 재기", "꽃밭 둘레를 점으로 연결 · 선택")}
+    ${wbImg("lawn.jpg", "스페이스 허브 초록 잔디밭 (빨간 네모)")}
+    <div class="muted" style="text-align:center;margin:4px 0 2px">빨간 네모 안의 긴 초록 잔디밭이에요.</div>
+    ${sec("초록 잔디밭 면적 구하기", "세 가지 방법으로 재어 봐요")}
+    ${wbImg("area_methods.jpg", "넓이를 재는 세 가지 방법")}
+    ${sec("방법 ① 측정(Measure) 앱", "네 모서리를 차례로 콕!")}
+    <div class="calc">${mini("a_app", p.app, { w: 90 })} ㎡</div>
+    ${sec("방법 ② 지도 앱 면적 재기", "잔디밭 둘레를 점으로 연결!")}
     <div class="calc">${mini("a_map", p.map, { w: 90 })} ㎡</div>
-    ${sec("방법 ③ 보폭 곱하기", `보 수 × 1보 = 길이(m)${one ? ` · 내 1보 ${one}cm` : ""}`)}
-    <div class="calc">가로 ${mini("a_ws", p.ws, { w: 56, int: true })} 보 → ${mini("a_wm", p.wm, { w: 70 })} m</div>
-    <div class="calc">세로 ${mini("a_hs", p.hs, { w: 56, int: true })} 보 → ${mini("a_hm", p.hm, { w: 70 })} m</div>
-    <div class="calc">넓이 <span class="a-f">□ m × □ m</span> = ${mini("a_st", p.stride, { w: 80 })} ㎡ ${star}</div>
-    <div class="muted" style="margin-bottom:6px">우리 가족이 정한 꽃밭 사진 <small>(선택)</small></div><div class="ph"></div>
-    ${sec("꽃밭 전체의 꽃은 몇 송이?", "방형구법 ④")}
-    <div class="calc">1㎡당 꽃 수 ${mini("a_pm", perM2, { w: 70, int: true })} 송이 × 넓이 <span class="a-app">□</span>㎡</div>
+    ${sec("방법 ③ 보폭으로 재기", `보 수 × 1보 = 길이(m)${one ? ` · 내 1보 ${one}cm` : ""}`)}
+    <div class="calc">가로 ${mini("a_ws", p.ws, { w: 56, int: true })} 보 × 1보 → ${mini("a_wm", p.wm, { w: 70 })} m</div>
+    <div class="calc">세로 ${mini("a_hs", p.hs, { w: 56, int: true })} 보 × 1보 → ${mini("a_hm", p.hm, { w: 70 })} m</div>
+    <div class="calc">넓이 <span class="a-f">□ m × □ m</span> = ${mini("a_st", p.stride, { w: 80 })} ㎡</div>
+    ${sec(`가장 믿는 넓이 1개 ${star}`, "방법 ①②③ 중에서 골라요")}
+    <div class="choices a-best" style="grid-template-columns:repeat(3,1fr)"></div>
+    ${sec("잔디밭에 국화를 심는다면 몇 송이?", "앞에서 구한 방형구법의 1㎡를 활용해요")}
+    <div class="calc">1㎡당 꽃 수 ${mini("a_pm", perM2, { w: 70, int: true })} 송이 × 넓이 <span class="a-bv">□</span>㎡</div>
     <div class="calc">= 약 ${mini("a_tot", p.total, { w: 100, int: true })} 송이</div>
-    <div class="muted">1㎡당 꽃 수는 「방형구법과 AI로 국화꽃 세기」에서 구한 값이에요. 넓이는 측정 앱으로 잰 값을 써요.</div>
+    <div class="muted">1㎡당 꽃 수는 「방형구법과 AI로 국화꽃 세기」에서 구한 값이에요. 답을 내면 「팀별 발자취」에서 실제 넓이와 비교할 수 있어요!</div>
     <div class="family-tip">가족 함께해요 ▶ 보폭을 잴 때는 같은 속도로 걷고 시작·끝에 표시해 주세요.</div>`;
+  const bestVal = () => best ? numOr(el, { app: "a_app", map: "a_map", stride: "a_st" }[best]) : null;
+  const drawBest = () => {
+    const v = { app: numOr(el, "a_app"), map: numOr(el, "a_map"), stride: numOr(el, "a_st") };
+    el.querySelector(".a-best").innerHTML = AREA_WAYS.map(([k, n]) => `<button type="button" class="choice ${best === k ? "on" : ""}" data-v="${k}" ${v[k] == null ? "disabled" : ""}>
+      ${n}<small style="display:block;font-weight:600">${v[k] == null ? "아직 안 잼" : v[k] + "㎡"}</small></button>`).join("");
+    el.querySelectorAll(".a-best .choice").forEach((b) => b.onclick = () => { best = b.dataset.v; drawBest(); });
+    el.querySelector(".a-bv").textContent = bestVal() ?? "□";
+  };
   const live = () => {
-    const w = numOf(el, "a_wm"), h = numOf(el, "a_hm");
+    const w = numOr(el, "a_wm"), h = numOr(el, "a_hm");
     el.querySelector(".a-f").textContent = `${w ?? "□"} m × ${h ?? "□"} m`;
-    el.querySelector(".a-app").textContent = numOf(el, "a_app") ?? "□";
+    if (best && bestVal() == null) best = "";
+    drawBest();
   };
   el.querySelectorAll("input").forEach((i) => i.addEventListener("input", live));
   live();
-  photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
+  const out = () => ({
+    app: numOr(el, "a_app"), map: numOr(el, "a_map"), ws: numOr(el, "a_ws"), wm: numOr(el, "a_wm"), hs: numOr(el, "a_hs"), hm: numOr(el, "a_hm"),
+    stride: numOr(el, "a_st"), best, bestArea: bestVal(), perM2: numOr(el, "a_pm"), total: numOr(el, "a_tot")
+  });
   return {
-    draft() {
-      return { app: numOr(el, "a_app"), map: numOr(el, "a_map"), ws: numOr(el, "a_ws"), wm: numOr(el, "a_wm"), hs: numOr(el, "a_hs"), hm: numOr(el, "a_hm"),
-        stride: numOr(el, "a_st"), perM2: numOr(el, "a_pm"), total: numOr(el, "a_tot"), photo };
-    },
+    draft: out,
     collect() {
-      const e = checkAll(el, [["a_app", "측정 앱 넓이", "㎡"], ["a_map", "지도 앱 넓이", "㎡", false, true], ["a_ws", "가로 보 수", "보", true], ["a_wm", "가로 길이", "m"],
-        ["a_hs", "세로 보 수", "보", true], ["a_hm", "세로 길이", "m"], ["a_st", "보폭으로 잰 넓이", "㎡"], ["a_pm", "1㎡당 꽃 수", "송이", true], ["a_tot", "꽃밭 전체 꽃 수", "송이", true]]);
+      const e = checkAll(el, [["a_app", "측정 앱 넓이", "㎡", false, true], ["a_map", "지도 앱 넓이", "㎡", false, true], ["a_ws", "가로 보 수", "보", true, true], ["a_wm", "가로 길이", "m", false, true],
+        ["a_hs", "세로 보 수", "보", true, true], ["a_hm", "세로 길이", "m", false, true], ["a_st", "보폭으로 잰 넓이", "㎡", false, true]]);
       if (e) return fail(e);
-      return {
-        ok: true, data: {
-          app: numOf(el, "a_app"), map: numOf(el, "a_map"), ws: numOf(el, "a_ws"), wm: numOf(el, "a_wm"), hs: numOf(el, "a_hs"), hm: numOf(el, "a_hm"),
-          stride: numOf(el, "a_st"), perM2: numOf(el, "a_pm"), total: numOf(el, "a_tot"), photo
-        }
-      };
+      if (numOr(el, "a_app") == null && numOr(el, "a_map") == null && numOr(el, "a_st") == null) return fail("방법 ①②③ 중 하나 이상으로 잔디밭 넓이를 재어 써 주세요.");
+      if (!best || bestVal() == null) return fail("가장 믿는 넓이 1개를 골라 주세요.");
+      const e2 = checkAll(el, [["a_pm", "1㎡당 꽃 수", "송이", true], ["a_tot", "심을 수 있는 국화 수", "송이", true]]); if (e2) return fail(e2);
+      return { ok: true, data: out() };
     }
   };
 };
 
-/* 4-1. 자연 속 피보나치 수 */
-export const FIBO_ROWS = [["3", "붓꽃, 아이리스"], ["5", "야생장미, 무궁화, 동백, 패랭이, 채송화"], ["8", "모란, 코스모스"], ["13", "금잔화, 금불초"]];
+/* 4-1. 자연 속 피보나치 수 — 솔방울 나선 */
 R.fibo = (el, q, { prev }) => {
   const p = prev || {};
-  let type = p.starType || "";
   el.innerHTML = `
-    ${sec("한국정원에서 내가 찾은 피보나치 식물", "식물 인식 AI 활용")}
-    ${FIBO_ROWS.map(([n, ex]) => `<div class="fb-row"><div class="fb-n">${n}장</div><div class="grow">
-      <div class="muted" style="font-size:13px">예) ${ex}</div>
-      <input id="fb_${n}" class="inp" maxlength="30" placeholder="찾은 식물 이름" value="${esc(p.plants?.[n] || "")}"></div></div>`).join("")}
-    <div class="fb-row"><div class="fb-n" style="font-size:15px">솔방울<br><small>(대체)</small></div><div class="grow">
-      <div class="muted" style="font-size:13px">비늘이 만드는 나선은 이웃한 피보나치 수(5와 8, 8과 13 등)인 경우가 많아요. 땅에 떨어진 것을 눈으로만 세어요.</div>
-      <div class="calc" style="margin-top:6px">시계 방향 ${mini("fb_cw", p.cw, { w: 54, int: true })} 줄, 반시계 방향 ${mini("fb_ccw", p.ccw, { w: 54, int: true })} 줄</div></div></div>
-    ${sec(`데이터 맵에 쓸 숫자 ${star}`)}
-    <div class="choices" style="grid-template-columns:1fr 1fr"><button type="button" class="choice" data-v="petal">🌸 내가 센 꽃잎 수</button><button type="button" class="choice" data-v="cone">🌰 솔방울 나선 수</button></div>
-    <div class="calc" style="margin-top:8px">${mini("fb_star", p.star, { w: 70, int: true })} <span class="fb-u">${type === "cone" ? "줄" : "장"}</span></div>
-    <div class="muted">꽃이 없으면 솔방울 나선 수를 써요.</div>
-    <div class="family-tip">가족 함께해요 ▶ 꽃잎이 3·5·8·13이 아니어도 괜찮아요. 가까운 수를 찾으면 성공! 11월이라 꽃잎이 많이 떨어졌다면 솔방울 나선을 활용해요.</div>`;
-  if (type) el.querySelector(`[data-v="${type}"]`)?.classList.add("on");
-  choiceGroup(el, ".choice", (v) => { type = v; el.querySelector(".fb-u").textContent = v === "cone" ? "줄" : "장"; });
+    ${sec("솔방울의 피보나치 수", "솔방울을 뒤집어 아래쪽에서 봐요")}
+    ${wbImg("pinecone.jpg", "솔방울 나선: 시계 반대 방향 8줄(파랑), 시계 방향 13줄(빨강)")}
+    <div class="muted" style="margin:6px 0">솔방울 비늘이 만드는 나선은 이웃한 피보나치 수(5와 8, 8과 13 등)인 경우가 많아요. 땅에 떨어진 것을 눈으로만 세어요.</div>
+    ${sec("사진 위에 나선 그려 보기", "그냥 세기 어려우면 사진에 펜으로!")}
+    <div class="muted" style="margin-bottom:8px">솔방울 사진을 올리고, 색을 골라 손가락으로 나선을 따라 그려요. 한 줄을 그릴 때마다 한 번씩 그어요.</div>
+    <div class="sp"></div>
+    ${sec(`나선 수 세기 ${star}`)}
+    <div class="calc">시계 방향 나선 수 ${mini("fb_cw", p.cw, { w: 60, int: true })} 개 ${star}</div>
+    <div class="calc">시계 반대 방향 나선 수 ${mini("fb_ccw", p.ccw, { w: 60, int: true })} 개 ${star}</div>
+    <button type="button" class="btn small ghost" data-fill style="margin-top:6px">그린 선 수로 채우기</button>
+    <div class="fb-check muted" style="margin-top:8px"></div>
+    <div class="family-tip">가족 함께해요 ▶ 꼭 3·5·8·13이 아니어도 괜찮아요. 가까운 수를 찾으면 성공입니다. 꺾지 않고 눈으로만 세어요.</div>`;
+  const pad = spiralPad(el.querySelector(".sp"), { photo: p.photo, strokes: p.strokes }, () => {});
+  const check = () => {
+    const a = numOr(el, "fb_cw"), b = numOr(el, "fb_ccw"), box = el.querySelector(".fb-check");
+    if (a == null || b == null) { box.textContent = ""; return; }
+    const i = FIBS.indexOf(Math.min(a, b)), nb = i >= 0 && FIBS[i + 1] === Math.max(a, b);
+    box.innerHTML = nb ? `✨ ${Math.min(a, b)}와 ${Math.max(a, b)}는 이웃한 피보나치 수예요!` : `피보나치 수: 1, 1, 2, 3, 5, 8, 13, 21 … 우리 숫자와 비교해 봐요.`;
+  };
+  el.querySelectorAll("#fb_cw,#fb_ccw").forEach((i) => i.addEventListener("input", check));
+  el.querySelector("[data-fill]").onclick = () => {
+    const c = pad.counts();
+    if (!c.r && !c.b) return toast("사진 위에 나선을 먼저 그려 주세요.");
+    el.querySelector("#fb_cw").value = c.r; el.querySelector("#fb_ccw").value = c.b; check();
+  };
+  check();
+  const out = () => {
+    const drawn = pad.strokes.length ? pad.composite() : (pad.photo || "");
+    return { cw: numOr(el, "fb_cw"), ccw: numOr(el, "fb_ccw"), photo: pad.photo, drawn, strokes: pad.strokes.slice(0, 80).map((s) => ({ c: s.c, p: s.p.slice(0, 300) })) };
+  };
   return {
-    draft() {
-      const plants = {};
-      FIBO_ROWS.forEach(([n]) => { const v = valOf(el, "fb_" + n); if (v) plants[n] = v; });
-      return { plants, cw: numOr(el, "fb_cw"), ccw: numOr(el, "fb_ccw"), starType: type, star: numOr(el, "fb_star") };
-    },
+    draft: out,
     collect() {
-      const plants = {};
-      FIBO_ROWS.forEach(([n]) => { const v = el.querySelector("#fb_" + n).value.trim(); if (v) plants[n] = v; });
-      const e = checkAll(el, [["fb_cw", "시계 방향 줄 수", "줄", true, true], ["fb_ccw", "반시계 방향 줄 수", "줄", true, true]]);
-      if (e) return fail(e);
-      const cw = numOf(el, "fb_cw"), ccw = numOf(el, "fb_ccw");
-      if (!Object.keys(plants).length && (cw == null || ccw == null)) return fail("피보나치 수가 적용된 식물 이름을 하나 이상 쓰거나, 솔방울 나선 수를 두 방향 모두 써 주세요.");
-      if (!type) return fail("데이터 맵에 쓸 숫자가 꽃잎 수인지 솔방울 나선 수인지 골라 주세요.");
-      const e2 = checkAll(el, [["fb_star", type === "cone" ? "솔방울 나선 수" : "꽃잎 수", type === "cone" ? "줄" : "장", true]]); if (e2) return fail(e2);
-      return { ok: true, data: { plants, cw, ccw, starType: type, star: numOf(el, "fb_star") } };
+      const e = checkAll(el, [["fb_cw", "시계 방향 나선 수", "개", true], ["fb_ccw", "시계 반대 방향 나선 수", "개", true]]); if (e) return fail(e);
+      return { ok: true, data: out() };
     }
   };
 };
@@ -612,15 +637,12 @@ R.fibo = (el, q, { prev }) => {
 R.golden = (el, q, { prev }) => {
   const p = prev || {};
   el.innerHTML = `
-    ${sec("① 가족 몸에서 황금비 찾기", "손의 길이와 손목~팔꿈치 길이")}
-    ${numField("g_hand", "내 손 길이 ★", "cm", p.hand, { ph: "예) 15" })}
-    ${numField("g_arm", "내 손목~팔꿈치 길이 ★", "cm", p.arm, { ph: "예) 24" })}
+    ${sec("가족 몸에서 황금비 찾기", "손의 길이와 손목~팔꿈치 길이")}
+    ${numField("g_hand", "내 손 길이", "cm", p.hand, { ph: "예) 15" })}
+    ${numField("g_arm", "내 손목~팔꿈치 길이", "cm", p.arm, { ph: "예) 24" })}
     <div class="gold-box"></div>
-    ${sec("② 정자·담장·나뭇잎에서 찾기", "선택")}
-    <label class="fld" for="g_f1">내가 찾은 황금비 ①</label>
+    <label class="fld" for="g_f1">내가 찾은 황금비 <small>(선택)</small></label>
     <input id="g_f1" class="inp" maxlength="40" placeholder="예) 얼굴 가로 : 세로" value="${esc(p.found1 || "")}">
-    <label class="fld" for="g_f2">내가 찾은 황금비 ②</label>
-    <input id="g_f2" class="inp" maxlength="40" placeholder="예) 부용정 창문의 가로 : 세로" value="${esc(p.found2 || "")}">
     <div class="muted" style="margin-top:8px">황금비 예시: 얼굴 가로와 세로 · 턱~코 밑과 코 밑~눈썹 · 손과 손목~팔꿈치 · 배꼽~머리끝과 배꼽~발끝 · 손가락 마디</div>
     <div class="family-tip">가족 함께해요 ▶ 서로의 몸을 잴 때는 먼저 동의를 구하고 웃으며 재요.</div>`;
   const live = () => {
@@ -635,11 +657,11 @@ R.golden = (el, q, { prev }) => {
   el.querySelectorAll("#g_hand,#g_arm").forEach((i) => i.addEventListener("input", live));
   live();
   return {
-    draft() { return { hand: numOr(el, "g_hand"), arm: numOr(el, "g_arm"), found1: valOf(el, "g_f1"), found2: valOf(el, "g_f2") }; },
+    draft() { return { hand: numOr(el, "g_hand"), arm: numOr(el, "g_arm"), found1: valOf(el, "g_f1") }; },
     collect() {
       const e = checkAll(el, [["g_hand", "손 길이", "cm"], ["g_arm", "손목~팔꿈치 길이", "cm"]]); if (e) return fail(e);
       if (!(numOf(el, "g_hand") > 0)) return fail("손 길이는 0보다 커야 해요.");
-      return { ok: true, data: { hand: numOf(el, "g_hand"), arm: numOf(el, "g_arm"), found1: el.querySelector("#g_f1").value.trim(), found2: el.querySelector("#g_f2").value.trim() } };
+      return { ok: true, data: { hand: numOf(el, "g_hand"), arm: numOf(el, "g_arm"), found1: valOf(el, "g_f1") } };
     }
   };
 };
