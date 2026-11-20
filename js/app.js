@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.16";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.16";
-import { renderInput } from "./inputs.js?v=3.16";
-import { renderPeek } from "./peek.js?v=3.16";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.16";
-import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.16";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.17";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.17";
+import { renderInput } from "./inputs.js?v=3.17";
+import { renderPeek } from "./peek.js?v=3.17";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.17";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.17";
 import { getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -63,11 +63,19 @@ function watchKeep(q) {
 // 다른 화면으로 가거나 앱을 닫을 때도 한 번 더 남겨 둬요
 window.addEventListener("pagehide", () => { const q = qs()[S.idx]; if (q && S.view === "mission" && S.handle?.draft && !NO_KEEP.includes(q.kind)) { try { localStorage.setItem(keptKey(q), JSON.stringify({ t: Date.now(), d: S.handle.draft() })); } catch { /* 괜찮아요 */ } } });
 
+// 제출 버튼·완료 문구: 마무리 활동은 「답」 대신 알맞은 말로
+const WORDS = {
+  scale: { first: "만족도 보내기", again: "만족도 다시 보내기", done: "✅ 만족도를 보냈어요!", sub: "소중한 의견 고마워요." },
+  comment: { first: "소감 남기기", again: "소감 고쳐서 다시 남기기", done: "✅ 소감을 남겼어요!", sub: "다른 가족은 어떤 소감을 남겼을까요?" },
+  fun: { first: "골라서 보내기", again: "다시 골라서 보내기", done: "✅ 재미있었던 활동을 보냈어요!", sub: "다른 가족은 무엇이 재미있었을까요?" }
+};
+const words = (q) => WORDS[q.kind] || { first: "답 제출하기", again: "답 고쳐서 다시 제출하기", done: "✅ 제출했어요!", sub: "다른 가족은 어떻게 답했을까요?" };
+
 // 일단 제출한 미션 (다 못 하고 낸 것)
 const isPartial = (q) => !!S.mine[q.id]?.partial;
 const solvedTag = (q) => !solved(q) ? ""
   : isPartial(q) ? `<span class="solved-tag partial">📝 일단 제출한 미션 · 돌아와서 이어서 할 수 있어요</span>`
-  : `<span class="solved-tag">✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요</span>`;
+  : `<span class="solved-tag">${{ scale: "✔ 만족도를 보냈어요 · 다시 보낼 수 있어요", comment: "✔ 소감을 남겼어요 · 고쳐서 다시 남길 수 있어요", fun: "✔ 재미있었던 활동을 골랐어요 · 다시 고를 수 있어요" }[q.kind] || "✔ 해결한 미션 · 답을 고쳐서 다시 낼 수 있어요"}</span>`;
 // 우리 가족 답을 미션 종류별로 (예: mine.stride)
 const mineByKind = () => Object.fromEntries(withDefaults(S.config).questions.filter((q) => S.mine[q.id]).map((q) => [q.kind, S.mine[q.id]]));
 const allDone = () => qs().length > 0 && firstOpen() >= qs().length;
@@ -285,7 +293,7 @@ function openMission(i) {
   $("qErr").textContent = "";
   $("qDone").classList.add("hidden");
   $("btnSubmit").classList.remove("hidden");
-  $("btnSubmit").textContent = solved(q) ? (isPartial(q) ? "이어서 하고 제출하기" : "답 고쳐서 다시 제출하기") : "답 제출하기";
+  $("btnSubmit").textContent = solved(q) ? (isPartial(q) ? "이어서 하고 제출하기" : words(q).again) : words(q).first;
   $("btnPeek").classList.toggle("hidden", q.kind === "scale");
   const kept = loadKept(q);
   S.handle = renderInput($("qInput"), q, {
@@ -340,7 +348,7 @@ async function submit(opts = {}) {
     $("qSolved").innerHTML = solvedTag(q);
     const last = S.idx >= l.length - 1;
     $("qDone").innerHTML = `<div class="card" style="background:#eef1fb;margin:0;text-align:center">
-        <b style="font-size:18px">${partial ? "📝 일단 제출했어요!" : "✅ 제출했어요!"}</b><div class="muted">${partial ? "나중에 이 미션으로 돌아와서 이어서 할 수 있어요." : "다른 가족은 어떻게 답했을까요?"}</div>
+        <b style="font-size:18px">${partial ? "📝 일단 제출했어요!" : words(q).done}</b><div class="muted">${partial ? "나중에 이 미션으로 돌아와서 이어서 할 수 있어요." : words(q).sub}</div>
         <div class="row" style="margin-top:10px">
           ${q.kind === "scale" ? "" : `<button type="button" class="btn ghost grow" data-peek>발자취 보기</button>`}
           <button type="button" class="btn grow" data-next>${last ? "🏆 완주!" : "다음 미션 ▶"}</button></div></div>`;
@@ -348,13 +356,13 @@ async function submit(opts = {}) {
     $("qDone").querySelector("[data-peek]")?.addEventListener("click", () => openPeek(q));
     $("qDone").querySelector("[data-next]").onclick = goNext;
     $("qDone").scrollIntoView({ block: "center", behavior: "smooth" });
-    btn.textContent = q.kind === "pento" ? "미션 통과하기" : partial ? "이어서 하고 제출하기" : "답 고쳐서 다시 제출하기";
+    btn.textContent = q.kind === "pento" ? "미션 통과하기" : partial ? "이어서 하고 제출하기" : words(q).again;
   } catch (e) {
     console.error(e);
     $("qErr").textContent = e?.code === "unavailable" || !navigator.onLine
       ? "저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."
       : `저장하지 못했어요. 다시 눌러 보고, 계속 안 되면 선생님께 알려 주세요. (${e?.code || e?.message || "알 수 없는 오류"})`;
-    btn.textContent = "답 제출하기";
+    btn.textContent = q.kind === "pento" ? "미션 통과하기" : solved(q) ? words(q).again : words(q).first;
   } finally { busy = false; btn.disabled = false; }
 }
 $("btnSubmit").onclick = () => submit();
