@@ -1,9 +1,9 @@
 // 문제별 입력 화면 — render(el, q, ctx)는 { collect } 를 돌려줘요.
 // collect()는 형식을 검사해 { ok, msg, data, priv } 를 돌려줘요. (정답 검사는 하지 않아요 — 펜토미노만 판을 다 채워야 해요)
-import { esc, fileToJpeg, toast } from "./fb.js?v=3.14";
-import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift, FIBS } from "./questions.js?v=3.14";
-import { PUZZLES } from "./puzzles.js?v=3.14";
-import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer, spiralPad } from "./widgets.js?v=3.14";
+import { esc, fileToJpeg, toast } from "./fb.js?v=3.15";
+import { BUILTIN, funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, pzGroup, keyShift, FIBS } from "./questions.js?v=3.15";
+import { PUZZLES } from "./puzzles.js?v=3.15";
+import { cipherWheel, cropper, dotsHtml, pentoBoard, miniGrid, eulerTracer, spiralPad } from "./widgets.js?v=3.15";
 
 const isNum = (s) => /^-?\d+(\.\d+)?$/.test(String(s).trim());
 const isInt = (s) => /^\d+$/.test(String(s).trim());
@@ -247,7 +247,7 @@ R.latin = (el, q, { prev }) => {
   drawSlots();
   photoPicker(el.querySelector(".ph"), photo, (u) => photo = u);
   return {
-    draft() { return { s1: pads.map((p) => p.values), colors, design: design.values, photo, name: el.querySelector("#l_name").value.trim() }; },
+    draft() { return { s1: { 0: pads[0].values, 1: pads[1].values }, colors, design: design.values, photo, name: el.querySelector("#l_name").value.trim() }; },
     collect() {
       for (let k = 0; k < 2; k++) {
         const g = pads[k].values;
@@ -259,7 +259,7 @@ R.latin = (el, q, { prev }) => {
       if (!d.every(Boolean)) return fail("STEP 2 설계판의 칸을 모두 색칠해 주세요.");
       if (latinClash(d, false).size) return fail("STEP 2 설계판에서 같은 줄에 같은 색이 겹쳤어요. 빨간 칸을 고쳐 주세요.");
       if (!photo) return fail("완성한 스마트톡 인증샷을 올려 주세요.");
-      return { ok: true, data: { s1: pads.map((p) => p.values), colors, design: d, photo, name: el.querySelector("#l_name").value.trim() } };
+      return { ok: true, data: { s1: { 0: pads[0].values, 1: pads[1].values }, colors, design: d, photo, name: el.querySelector("#l_name").value.trim() } };
     }
   };
 };
@@ -622,7 +622,7 @@ R.fibo = (el, q, { prev }) => {
   check();
   const out = () => {
     const drawn = pad.strokes.length ? pad.composite() : (pad.photo || "");
-    return { cw: numOr(el, "fb_cw"), ccw: numOr(el, "fb_ccw"), photo: pad.photo, drawn, strokes: pad.strokes.slice(0, 80).map((s) => ({ c: s.c, p: s.p.slice(0, 300) })) };
+    return { cw: numOr(el, "fb_cw"), ccw: numOr(el, "fb_ccw"), photo: pad.photo, drawn, strokes: pad.strokes.slice(0, 80).map((s) => ({ c: s.c, p: s.p.slice(0, 300).flat() })) };
   };
   return {
     draft: out,

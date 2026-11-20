@@ -1,6 +1,6 @@
 // 화면 부품: 시저 암호판, 사진 자르기, 꽃 위치 점 표시, 펜토미노 판
-import { PIECES, PIECE_COLORS } from "./questions.js?v=3.14";
-import { esc, toast, fileToJpeg } from "./fb.js?v=3.14";
+import { PIECES, PIECE_COLORS } from "./questions.js?v=3.15";
+import { esc, toast, fileToJpeg } from "./fb.js?v=3.15";
 
 const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -421,7 +421,9 @@ export function eulerTracer(el, fig, prev, onChange = () => {}) {
 export const SPIRAL_COLORS = { r: "#e53935", b: "#1e66d0" };
 export function spiralPad(holder, prev, onChange = () => {}) {
   let photo = prev?.photo || "";
-  let strokes = (prev?.strokes || []).map((s) => ({ c: s.c, p: s.p.map((q) => [...q]) }));
+  // 저장된 선은 [x0, y0, x1, y1 …]처럼 펼쳐져 있어요 (Firestore는 배열 안의 배열을 못 담아요)
+  const unflat = (p) => Array.isArray(p[0]) ? p.map((q) => [...q]) : p.reduce((a, v, i) => (i % 2 ? a[a.length - 1].push(v) : a.push([v]), a), []);
+  let strokes = (prev?.strokes || []).map((s) => ({ c: s.c, p: unflat(s.p || []) }));
   let pen = "r", img = null, drawing = null;
   holder.innerHTML = `
     <div class="sp-wrap">

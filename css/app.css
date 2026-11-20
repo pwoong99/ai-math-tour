@@ -707,3 +707,7 @@ h4.sec small { color: var(--sub); }
 .sp-count { text-align: center; margin-bottom: 6px; }
 .pw-intro { background: #fff6c9; border: 1.5px solid var(--navy); border-radius: 12px; padding: 10px 12px; margin: 4px 0 8px; font-size: 14px; }
 #btnPwTop { padding: 6px 9px; font-size: 17px; }
+/* 미션 화면: 아래 버튼 막대에 가리지 않도록 넉넉히 올라가게 */
+#v-mission { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+body.pento-focus #v-mission { padding-bottom: 0; }
+.kept-tag { margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--sub); }

@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.14";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.14";
-import { renderInput } from "./inputs.js?v=3.14";
-import { renderPeek } from "./peek.js?v=3.14";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.14";
-import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.14";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.15";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.15";
+import { renderInput } from "./inputs.js?v=3.15";
+import { renderPeek } from "./peek.js?v=3.15";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.15";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.15";
 import { getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -38,6 +38,31 @@ function show(v) {
 const qs = () => visibleQs(S.config);
 const solved = (q) => !!S.team?.solved?.[q.id];
 const firstOpen = () => { const l = qs(); const i = l.findIndex((q) => !solved(q)); return i < 0 ? l.length : i; };
+/* ── 쓰던 내용 지키기: 제출 전에 새로고침해도 이 기기에 남아 있어요 ── */
+const NO_KEEP = ["pento", "scale"];             // 펜토미노는 퍼즐마다 저장, 만족도는 비공개라 남기지 않아요
+const keptKey = (q) => `mt_keep_${S.me?.teamId}_${q.id}`;
+function loadKept(q) {
+  if (NO_KEEP.includes(q.kind)) return null;
+  try { return JSON.parse(localStorage.getItem(keptKey(q)) || "null")?.d || null; } catch { return null; }
+}
+function clearKept(q) { try { localStorage.removeItem(keptKey(q)); } catch { /* 괜찮아요 */ } }
+let keepTimer = null;
+function watchKeep(q) {
+  if (NO_KEEP.includes(q.kind)) return;
+  const save = () => {
+    clearTimeout(keepTimer);
+    keepTimer = setTimeout(() => {
+      if (S.view !== "mission" || qs()[S.idx]?.id !== q.id || !S.handle?.draft) return;
+      try { localStorage.setItem(keptKey(q), JSON.stringify({ t: Date.now(), d: S.handle.draft() })); }
+      catch { /* 사진이 너무 크면 남기지 못할 수 있어요 */ }
+    }, 500);
+  };
+  const box = $("qInput");
+  box.oninput = save; box.onchange = save; box.onpointerup = save; box.onclick = save;
+}
+// 다른 화면으로 가거나 앱을 닫을 때도 한 번 더 남겨 둬요
+window.addEventListener("pagehide", () => { const q = qs()[S.idx]; if (q && S.view === "mission" && S.handle?.draft && !NO_KEEP.includes(q.kind)) { try { localStorage.setItem(keptKey(q), JSON.stringify({ t: Date.now(), d: S.handle.draft() })); } catch { /* 괜찮아요 */ } } });
+
 // 일단 제출한 미션 (다 못 하고 낸 것)
 const isPartial = (q) => !!S.mine[q.id]?.partial;
 const solvedTag = (q) => !solved(q) ? ""
@@ -262,8 +287,9 @@ function openMission(i) {
   $("btnSubmit").classList.remove("hidden");
   $("btnSubmit").textContent = solved(q) ? (isPartial(q) ? "이어서 하고 제출하기" : "답 고쳐서 다시 제출하기") : "답 제출하기";
   $("btnPeek").classList.toggle("hidden", q.kind === "scale");
+  const kept = loadKept(q);
   S.handle = renderInput($("qInput"), q, {
-    prev: S.mine[q.id], config: S.config, mine: mineByKind(), teamId: S.me.teamId, round: S.team?.round || 0,
+    prev: kept || S.mine[q.id], config: S.config, mine: mineByKind(), teamId: S.me.teamId, round: S.team?.round || 0,
     autoSubmit: () => submit(),
     // 미션 해결로 치지 않고 답만 중간 저장 (펜토미노: 퍼즐 하나씩 완성할 때)
     saveDraft: (data) => setDoc(doc(db, C.answers, `${S.me.teamId}_${q.id}`), {
@@ -271,6 +297,8 @@ function openMission(i) {
     })
   });
   if (q.kind === "pento") $("btnSubmit").textContent = "미션 통과하기";
+  if (kept) $("qSolved").insertAdjacentHTML("beforeend", `<div class="kept-tag">💾 제출하기 전에 쓰던 내용을 불러왔어요.</div>`);
+  watchKeep(q);
   renderProgress();
   // 관리자 진행 현황에 "지금 보고 있는 미션" 알려 주기
   if (S.team?.current !== q.id) {
@@ -306,6 +334,7 @@ async function submit(opts = {}) {
       [`solved.${q.id}`]: partial ? "partial" : true, current: (l[S.idx + 1] || q).id, updatedAt: serverTimestamp()
     });
     S.mine[q.id] = r.data;
+    clearKept(q);
     S.team.solved = { ...(S.team.solved || {}), [q.id]: partial ? "partial" : true };
     renderProgress();
     $("qSolved").innerHTML = solvedTag(q);
@@ -322,7 +351,9 @@ async function submit(opts = {}) {
     btn.textContent = q.kind === "pento" ? "미션 통과하기" : partial ? "이어서 하고 제출하기" : "답 고쳐서 다시 제출하기";
   } catch (e) {
     console.error(e);
-    $("qErr").textContent = "저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.";
+    $("qErr").textContent = e?.code === "unavailable" || !navigator.onLine
+      ? "저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."
+      : `저장하지 못했어요. 다시 눌러 보고, 계속 안 되면 선생님께 알려 주세요. (${e?.code || e?.message || "알 수 없는 오류"})`;
     btn.textContent = "답 제출하기";
   } finally { busy = false; btn.disabled = false; }
 }

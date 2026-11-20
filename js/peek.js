@@ -1,10 +1,10 @@
 // 팀별 발자취 모아보기 — 문제마다 어울리는 모양으로 보여 줘요.
 // renderPeek(el, q, list, ctx): list = [{ teamId, label, data }], ctx = { myTeamId, config, times }
-import { esc } from "./fb.js?v=3.14";
-import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText, FIBS } from "./questions.js?v=3.14";
-import { PUZZLES } from "./puzzles.js?v=3.14";
-import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.14";
-import { SIGN_FIELDS } from "./inputs.js?v=3.14";
+import { esc } from "./fb.js?v=3.15";
+import { funOptions, qTitle, qIcon, pentoSettings, pentoSolved, pentoProgress, keyShift, caesar, normText, FIBS } from "./questions.js?v=3.15";
+import { PUZZLES } from "./puzzles.js?v=3.15";
+import { dotsHtml, miniGrid, EULER_FIGS } from "./widgets.js?v=3.15";
+import { SIGN_FIELDS } from "./inputs.js?v=3.15";
 
 const PALETTE = ["#1f2a5c", "#e5484d", "#3a7bd5", "#d64545", "#8e5cd9", "#1aa3a3", "#c27c0e", "#e0559b"];
 const POSTIT = ["#fff59d", "#ffd1dc", "#c8f2c2", "#cfe8ff", "#ffe0b2", "#e6d4ff"];
@@ -126,12 +126,12 @@ P.euler = (el, list, { myTeamId: me }) => {
 
 P.cipher = (el, list, { myTeamId: me, config, admin }) => {
   const cps = config.ciphers || [];
-  const mine = admin || list.find((a) => a.teamId === me); // 우리 답을 내면 정답 공개 (관리자는 바로)
+  const mine = !!admin; // 정답은 관리자 화면에서만 보여요 (가족에게는 다른 가족의 풀이만)
   const rows = list.filter((a) => Array.isArray(a.data.answers));
   const unk = (c) => !/^[A-Z]$/i.test(String(c.key || "").trim());
   tabs(el, ["해독 결과", "가족 암호 풀어 보기"], (t, body) => {
     if (t === 0) {
-      body.innerHTML = (mine ? "" : `<div class="card" style="text-align:center">🔒 우리 가족 답을 내면 정답이 공개돼요!</div>`) + cps.map((c, i) => {
+      body.innerHTML = (mine ? "" : `<div class="peek-sub">가족들이 해독한 문장을 모았어요. 정답은 선생님과 함께 확인해요!</div>`) + cps.map((c, i) => {
         const ans = normText(c.answer);
         const g = new Map();
         rows.forEach((a) => { const k = normText(a.data.answers[i]); if (!k) return; if (!g.has(k)) g.set(k, []); g.get(k).push(a); });
