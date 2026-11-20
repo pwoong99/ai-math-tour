@@ -12,12 +12,13 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="AI수학투어">
   <meta name="format-detection" content="telephone=no">
-  <link rel="stylesheet" href="css/app.css?v=3.13">
+  <link rel="stylesheet" href="css/app.css?v=3.14">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">🧭 AI수학투어 미션<small>2026. 가족과 함께하는 AI수학투어</small></div>
     <span id="teamChip" class="chip hidden"></span>
+    <button id="btnPwTop" class="iconbtn hidden" type="button" aria-label="비밀번호 바꾸기" title="비밀번호 바꾸기">🔑</button>
     <button id="btnList" class="iconbtn hidden" type="button">📋 목록</button>
     <a id="btnAdmin" class="iconbtn" href="admin.html" aria-label="관리자" title="관리자" style="text-decoration:none;font-size:18px;padding:6px 10px">⚙️</a>
   </header>
@@ -52,6 +53,7 @@
 
     <!-- 미션 -->
     <section id="v-mission" class="hidden">
+      <div class="pw-slot"></div>
       <div class="progress"><div class="bar"><i id="pBar"></i></div><b id="pText"></b></div>
       <div class="card">
         <div id="qPlace" class="q-place"></div>
@@ -69,7 +71,7 @@
     <!-- 미션 목록 -->
     <section id="v-list" class="hidden">
       <h2 style="margin:4px 2px 12px">📋 미션 목록</h2>
-      <div id="pwNotice"></div>
+      <div id="pwNotice" class="pw-slot"></div>
       <div id="mList" class="mlist"></div>
       <button id="btnPw" class="btn ghost block small" type="button" style="margin-top:20px">🔑 비밀번호 바꾸기</button>
       <button id="btnLogout" class="btn gray block small" type="button" style="margin-top:10px">다른 가족으로 로그인하기</button>
@@ -79,6 +81,7 @@
     <div id="pwModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
       <div class="card modal-card">
         <h3 id="pwTitle" style="margin:0 0 6px">🔑 비밀번호 바꾸기</h3>
+        <div id="pwIntro" class="pw-intro hidden">지금은 선생님이 처음 나눠 준 비밀번호를 쓰고 있어요. 다른 가족이 우리 미션에 들어오지 않도록 <b>우리 가족만 아는 번호</b>로 바꿔 주세요!</div>
         <p class="muted" style="margin:0 0 6px">우리 가족만 아는 숫자 4자리로 바꿔요. 바꾼 뒤에는 다른 기기에서도 새 번호로 로그인해요.</p>
         <label class="fld" for="pwOld">지금 비밀번호</label>
         <input id="pwOld" class="inp pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="4" placeholder="●●●●">
@@ -137,6 +140,6 @@
     </div>
   </nav>
 
-  <script type="module" src="js/app.js?v=3.13"></script>
+  <script type="module" src="js/app.js?v=3.14"></script>
 </body>
 </html>
