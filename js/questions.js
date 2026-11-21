@@ -1,4 +1,4 @@
-import { PUZZLES } from "./puzzles.js?v=3.19";
+import { PUZZLES } from "./puzzles.js?v=3.20";
 // 미션 문제 정의 — 기본 문제(활동지 순서)와 관리자가 추가하는 문제 형식
 // 관리자 화면에서 순서·숨김·제목·안내 글을 바꾸면 mathTour_config/main 에 저장돼요.
 

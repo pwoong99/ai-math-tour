@@ -4,13 +4,13 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.19";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.19";
-import { STAR_ITEMS, starValues } from "./datamap.js?v=3.19";
-import { PUZZLES } from "./puzzles.js?v=3.19";
-import { miniGrid } from "./widgets.js?v=3.19";
-import { renderPeek } from "./peek.js?v=3.19";
-import { drawRoster, savePng } from "./cert.js?v=3.19";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.20";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.20";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=3.20";
+import { PUZZLES } from "./puzzles.js?v=3.20";
+import { miniGrid } from "./widgets.js?v=3.20";
+import { renderPeek } from "./peek.js?v=3.20";
+import { drawRoster, savePng } from "./cert.js?v=3.20";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -371,18 +371,20 @@ function renderProgress() {
   };
   $("pgStats").innerHTML = [[list.length + "팀", "참여 팀"], [done + "팀", "완주"], [list.length ? Math.round(list.reduce((a, t) => a + qs.filter((q) => t.solved?.[q.id]).length, 0) / list.length * 10) / 10 + "개" : "-", "팀당 평균 해결"]]
     .map(([v, t]) => `<div class="stat"><b>${v}</b><span>${t}</span></div>`).join("");
-  $("pgTbl").innerHTML = `<thead><tr><th>팀</th><th>학교 · 이름</th><th>지금 미션</th><th class="c">해결</th>${qs.map((q, i) => `<th class="c" title="${esc(qTitle(q))}">${i + 1}<br>${qIcon(q)}</th>`).join("")}<th>최근</th></tr></thead>
+  $("pgTbl").innerHTML = `<thead><tr><th class="c">팀</th><th class="pg-name">학교 · 이름</th><th class="pg-now">지금<span class="pg-qt"> 미션</span></th><th class="c">해결</th>${qs.map((q, i) => `<th class="c" title="${esc(qTitle(q))}">${i + 1}<br>${qIcon(q)}</th>`).join("")}<th>최근</th></tr></thead>
     <tbody>${list.map((t) => {
       const curI = qs.findIndex((q) => q.id === t.current);
       const n = qs.filter((q) => t.solved?.[q.id]).length;
-      return `<tr><td><b>${esc(t.label)}</b></td><td>${esc(t.school || "")} ${esc(t.name || "")}</td>
-        <td>${curI >= 0 ? `${curI + 1}. ${esc(qTitle(qs[curI]))}` : n === qs.length && n ? "🏆 완주" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
+      return `<tr><td class="c pg-team" data-who="${esc(`${t.label} · ${t.school || ""} ${t.name || ""}`)}"><b>${esc(String(t.label || "").replace(/팀$/, ""))}</b></td><td class="pg-name">${esc(t.school || "")} ${esc(t.name || "")}</td>
+        <td class="pg-now">${curI >= 0 ? `${curI + 1}<span class="pg-qt">. ${esc(qTitle(qs[curI]))}</span>` : n === qs.length && n ? "🏆<span class=\"pg-qt\"> 완주</span>" : "-"}</td><td class="c"><b>${n}</b>/${qs.length}</td>
         ${qs.map((q) => { const ok = t.solved?.[q.id], cur = t.current === q.id; return `<td class="c ${ok ? "ok" : cur ? "cur" : ""}" ${ok === "partial" ? 'title="일단 제출"' : ""}>${ok === "partial" ? "📝" : ok ? "✔" : cur ? "👉" : ""}</td>`; }).join("")}
         <td class="muted">${ago(t.updatedAt)}</td></tr>`;
     }).join("")}
-    <tr style="background:#f3f0e6"><td colspan="4"><b>미션별 해결 팀 수</b></td>${qs.map((q) => `<td class="c"><b>${list.filter((t) => t.solved?.[q.id]).length}</b></td>`).join("")}<td></td></tr></tbody>`;
+    <tr style="background:#f3f0e6"><td class="c"><b>계</b></td><td class="pg-name"></td><td colspan="2"><b>미션별 해결 팀 수</b></td>${qs.map((q) => `<td class="c"><b>${list.filter((t) => t.solved?.[q.id]).length}</b></td>`).join("")}<td></td></tr></tbody>`;
 }
 setInterval(() => { if (A.tab === "progress" && started) renderProgress(); }, 30000);
+// 팀 글자를 누르면 학교·이름을 잠깐 보여 줘요 (스마트폰에서는 이름 칸을 숨겨요)
+$("pgTbl").addEventListener("click", (e) => { const td = e.target.closest(".pg-team"); if (td) toast(td.dataset.who); });
 
 /* ── 문제 설정 ── */
 function renderQuestions(fillSettings) {
