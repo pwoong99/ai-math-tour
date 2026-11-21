@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.17";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.17";
-import { renderInput } from "./inputs.js?v=3.17";
-import { renderPeek } from "./peek.js?v=3.17";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.17";
-import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.17";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.18";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.18";
+import { renderInput } from "./inputs.js?v=3.18";
+import { renderPeek } from "./peek.js?v=3.18";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.18";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.18";
 import { getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -50,6 +50,7 @@ let keepTimer = null;
 function watchKeep(q) {
   if (NO_KEEP.includes(q.kind)) return;
   const save = () => {
+    S.dirty = true;
     clearTimeout(keepTimer);
     keepTimer = setTimeout(() => {
       if (S.view !== "mission" || qs()[S.idx]?.id !== q.id || !S.handle?.draft) return;
@@ -60,8 +61,15 @@ function watchKeep(q) {
   const box = $("qInput");
   box.oninput = save; box.onchange = save; box.onpointerup = save; box.onclick = save;
 }
-// 다른 화면으로 가거나 앱을 닫을 때도 한 번 더 남겨 둬요
-window.addEventListener("pagehide", () => { const q = qs()[S.idx]; if (q && S.view === "mission" && S.handle?.draft && !NO_KEEP.includes(q.kind)) { try { localStorage.setItem(keptKey(q), JSON.stringify({ t: Date.now(), d: S.handle.draft() })); } catch { /* 괜찮아요 */ } } });
+// 다른 미션·화면으로 가거나 앱을 닫을 때 바로 남겨 둬요
+function keepNow() {
+  clearTimeout(keepTimer);
+  const q = qs()[S.idx];
+  if (!q || S.view !== "mission" || !S.handle?.draft || NO_KEEP.includes(q.kind) || q.id !== S.curId) return;
+  if (!S.dirty) return; // 손대지 않은 미션은 남기지 않아요
+  try { localStorage.setItem(keptKey(q), JSON.stringify({ t: Date.now(), d: S.handle.draft() })); } catch { /* 괜찮아요 */ }
+}
+window.addEventListener("pagehide", keepNow);
 
 // 제출 버튼·완료 문구: 마무리 활동은 「답」 대신 알맞은 말로
 const WORDS = {
@@ -268,15 +276,17 @@ function renderProgress() {
   $("btnPrev").disabled = S.idx <= 0;
   const q = l[S.idx];
   const last = S.idx >= l.length - 1;
-  $("btnNext").disabled = !q || !solved(q);
-  $("btnNext").textContent = last ? "🏆 완주 화면" : "다음 미션 ▶";
+  // 답을 내지 않아도 다음 미션으로 넘어갈 수 있어요 (쓰던 내용은 이 기기에 남아요)
+  $("btnNext").disabled = !q;
+  $("btnNext").textContent = last ? (allDone() ? "🏆 완주 화면" : "안 낸 미션 ▶") : "다음 미션 ▶";
 }
 
 function openMission(i) {
   const l = qs();
   if (!l.length) { showList(); return; }
   i = Math.max(0, Math.min(i, l.length - 1));
-  if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요 🔒"); i = firstOpen(); }
+  keepNow();
+  S.dirty = false;
   S.idx = i;
   const q = l[i];
   S.curId = q.id;
@@ -342,7 +352,7 @@ async function submit(opts = {}) {
       [`solved.${q.id}`]: partial ? "partial" : true, current: (l[S.idx + 1] || q).id, updatedAt: serverTimestamp()
     });
     S.mine[q.id] = r.data;
-    clearKept(q);
+    clearKept(q); clearTimeout(keepTimer); S.dirty = false;
     S.team.solved = { ...(S.team.solved || {}), [q.id]: partial ? "partial" : true };
     renderProgress();
     $("qSolved").innerHTML = solvedTag(q);
@@ -369,7 +379,11 @@ $("btnSubmit").onclick = () => submit();
 
 function goNext() {
   const l = qs();
-  if (S.idx >= l.length - 1) { allDone() ? showDone() : openMission(firstOpen()); return; }
+  if (S.idx >= l.length - 1) {
+    if (allDone()) { showDone(); return; }
+    toast(`아직 내지 않은 미션이 ${l.filter((q) => !solved(q)).length}개 있어요. 그 미션으로 갈게요!`);
+    openMission(firstOpen()); return;
+  }
   openMission(S.idx + 1);
 }
 $("btnNext").onclick = goNext;
@@ -381,13 +395,13 @@ $("btnBackList").onclick = showList;
 $("btnLogout").onclick = () => { if (confirm("로그아웃할까요? 지금까지 낸 답은 그대로 남아 있어요.")) logout(); };
 
 /* ── 미션 목록 ── */
-function showList() { show("list"); renderList(); }
+function showList() { keepNow(); show("list"); renderList(); }
 function renderList() {
   const l = qs(), open = firstOpen();
   drawPwNotice();
   let lastPlace = "";
   $("mList").innerHTML = l.map((q, i) => {
-    const ok = solved(q), locked = i > open, cur = i === open;
+    const ok = solved(q), locked = false, cur = i === open;
     const pk = qPlace(q), pl = PLACES[pk];
     let head = "";
     if (pk !== lastPlace) {
@@ -397,13 +411,11 @@ function renderList() {
     }
     return `${head}<button type="button" class="mitem ${locked ? "locked" : ""} ${cur ? "current" : ""}" data-i="${i}">
       <span class="ic">${qIcon(q)}</span>
-      <span class="t">${esc(qTitle(q))}<small>${qCode(q) ? `<span class="code">활동 ${esc(qCode(q))}</span>` : ""}미션 ${i + 1}${cur ? " · 지금 풀 차례" : ""}</small></span>
+      <span class="t">${esc(qTitle(q))}<small>${qCode(q) ? `<span class="code">활동 ${esc(qCode(q))}</span>` : ""}미션 ${i + 1}${cur ? " · 아직 안 낸 첫 미션" : ""}</small></span>
       <span class="st">${ok ? (isPartial(q) ? "📝" : "✅") : locked ? "🔒" : "▶"}</span></button>`;
   }).join("") + (allDone() ? `<button type="button" class="mitem current" data-done style="margin-top:14px"><span class="ic">🏆</span><span class="t">완주 · 데이터 맵과 수료증</span><span class="st">🎓</span></button>` : "");
   $("mList").querySelectorAll("[data-i]").forEach((b) => b.onclick = () => {
-    const i = Number(b.dataset.i);
-    if (i > firstOpen()) { toast("앞 미션을 먼저 해결해야 열려요 🔒"); return; }
-    openMission(i);
+    openMission(Number(b.dataset.i));
   });
   $("mList").querySelector("[data-done]")?.addEventListener("click", showDone);
 }
