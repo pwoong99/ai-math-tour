@@ -3,12 +3,12 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.18";
-import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.18";
-import { renderInput } from "./inputs.js?v=3.18";
-import { renderPeek } from "./peek.js?v=3.18";
-import { drawCertificate, canvasToPng } from "./cert.js?v=3.18";
-import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.18";
+import { db, auth, C, SESSIONS, esc, loginKey, checkPw, normName, toast, todayKR } from "./fb.js?v=3.19";
+import { withDefaults, visibleQs, qTitle, qDesc, qIcon, qPlace, qCode, PLACES } from "./questions.js?v=3.19";
+import { renderInput } from "./inputs.js?v=3.19";
+import { renderPeek } from "./peek.js?v=3.19";
+import { drawCertificate, canvasToPng } from "./cert.js?v=3.19";
+import { drawDataMap, drawOverview, starValues, STAR_KINDS, SCENE_NAMES } from "./datamap.js?v=3.19";
 import { getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -122,8 +122,12 @@ async function pickSession(s) {
   const sel = $("selSchool");
   sel.innerHTML = `<option value="">불러오는 중…</option>`;
   try {
-    const snap = await getDoc(doc(db, C.schools, s));
-    const list = snap.exists() ? (snap.data().list || []) : [];
+    // 시간대를 잘못 골라도 학교가 보이도록 오전·오후 학교를 모두 보여 줘요 (고른 시간대 학교가 먼저)
+    const other = s === "am" ? "pm" : "am";
+    const [a, b] = await Promise.all([getDoc(doc(db, C.schools, s)), getDoc(doc(db, C.schools, other)).catch(() => null)]);
+    const listOf = (d) => (d && d.exists() ? (d.data().list || []) : []);
+    const mineL = listOf(a), otherL = listOf(b).filter((x) => !mineL.includes(x));
+    const list = [...mineL, ...otherL].sort((x, y) => x.localeCompare(y, "ko"));
     sel.innerHTML = list.length
       ? `<option value="">학교를 골라 주세요</option>` + list.map((x) => `<option>${esc(x)}</option>`).join("")
       : `<option value="">아직 등록된 학교가 없어요</option>`;
@@ -145,17 +149,25 @@ $("btnLogin").onclick = async () => {
   if (pe) return err.textContent = pe;
   $("btnLogin").disabled = true;
   try {
-    const key = await loginKey(loginSession, school, name, Number(pw));
-    const snap = await getDoc(doc(db, C.logins, key));
-    if (!snap.exists()) { err.textContent = "학교, 이름, 비밀번호가 맞지 않아요. 다시 확인해 주세요."; return; }
+    // 고른 시간대에 없으면 다른 시간대에서도 찾아봐요 (오전·오후를 잘못 골랐거나 다른 시간대로 등록된 경우)
+    let sess = loginSession;
+    let key = await loginKey(sess, school, name, Number(pw));
+    let snap = await getDoc(doc(db, C.logins, key));
+    if (!snap.exists()) {
+      const other = sess === "am" ? "pm" : "am";
+      const key2 = await loginKey(other, school, name, Number(pw));
+      const snap2 = await getDoc(doc(db, C.logins, key2));
+      if (snap2.exists()) { sess = other; key = key2; snap = snap2; toast(`${SESSIONS[other]}으로 등록돼 있어서 ${SESSIONS[other]}으로 들어왔어요.`); }
+    }
+    if (!snap.exists()) { err.textContent = "학교, 이름, 비밀번호가 맞지 않아요. 다시 확인해 주세요. (비밀번호를 바꿨다면 바꾼 번호로 넣어 주세요)"; return; }
     // 처음 받은 비밀번호 그대로면 목록 화면에서 바꾸라고 안내해요
-    const info = { session: loginSession, school, name, key, teamId: snap.data().teamId, pwDefault: pw === String(withDefaults(S.config).startPw) };
+    const info = { session: sess, school, name, key, teamId: snap.data().teamId, pwDefault: pw === String(withDefaults(S.config).startPw) };
     await bindDevice(info);
     localStorage.setItem(LS, JSON.stringify(info));
     await enter(info);
   } catch (e) {
     console.error(e);
-    err.textContent = "로그인하지 못했어요. 잠시 뒤 다시 해 주세요.";
+    err.textContent = `로그인하지 못했어요. 잠시 뒤 다시 해 주세요.${navigator.onLine && e?.code ? ` (${e.code})` : ""}`;
   } finally { $("btnLogin").disabled = false; }
 };
 
@@ -172,6 +184,8 @@ async function enter(info) {
   try { S.me.pwDefault = (await loginKey(info.session, info.school, info.name, Number(withDefaults(S.config).startPw))) === info.key; } catch { /* 그대로 */ }
   const t = await getDoc(doc(db, C.teams, info.teamId));
   if (!t.exists()) throw new Error("team gone");
+  // 선생님이 우리 팀을 다른 시간대로 옮겼으면 한 번 다시 로그인해요
+  if (t.data().session && t.data().session !== info.session) throw new Error("session moved");
   S.team = t.data();
   $("teamChip").textContent = `${SESSIONS[info.session]} · ${S.team.label}`;
   S.unsub.forEach((u) => u()); S.unsub = [];

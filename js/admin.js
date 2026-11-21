@@ -4,13 +4,13 @@ import {
   collection, query, where, serverTimestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.18";
-import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.18";
-import { STAR_ITEMS, starValues } from "./datamap.js?v=3.18";
-import { PUZZLES } from "./puzzles.js?v=3.18";
-import { miniGrid } from "./widgets.js?v=3.18";
-import { renderPeek } from "./peek.js?v=3.18";
-import { drawRoster, savePng } from "./cert.js?v=3.18";
+import { db, auth, C, ADMIN_EMAIL, SESSIONS, esc, loginKey, checkPw, normName, normSchool, labelOf, toast } from "./fb.js?v=3.19";
+import { withDefaults, DEFAULT_CONFIG, BUILTIN, CUSTOM_KINDS, isBuiltin, qTitle, qDesc, qIcon, qPlace, qCode, PLACES, PLACE_ORDER, DEFAULT_CIPHERS, Q_VERSION, keyShift, caesar, normText, pentoSettings, pentoSolved } from "./questions.js?v=3.19";
+import { STAR_ITEMS, starValues } from "./datamap.js?v=3.19";
+import { PUZZLES } from "./puzzles.js?v=3.19";
+import { miniGrid } from "./widgets.js?v=3.19";
+import { renderPeek } from "./peek.js?v=3.19";
+import { drawRoster, savePng } from "./cert.js?v=3.19";
 
 const $ = (id) => document.getElementById(id);
 const A = {
@@ -223,6 +223,8 @@ function teamTools() {
   $("tSave").disabled = !n; $("tSave").textContent = n ? `💾 바뀐 내용 모두 저장 (${n}팀)` : "💾 바뀐 내용 모두 저장";
   $("tDel").disabled = !c; $("tDel").textContent = c ? `🗑 선택한 팀 삭제 (${c}팀)` : "🗑 선택한 팀 삭제";
   $("tRand").disabled = !c;
+  const to = SESSIONS[A.session === "am" ? "pm" : "am"];
+  $("tMove").disabled = !c; $("tMove").textContent = c ? `🔀 선택한 팀 ${to}으로 옮기기 (${c}팀)` : `🔀 선택한 팀 ${to}으로 옮기기`;
 }
 
 // 선택한 팀 비밀번호 새로 만들기 (저장 버튼을 눌러야 반영돼요)
@@ -272,6 +274,55 @@ $("tSave").onclick = async () => {
     renderTeams();
     toast(`${rows.length}팀을 저장했어요.${keyChanged ? " (이미 접속한 기기는 그대로 쓸 수 있어요)" : ""}`);
   } catch (e) { console.error(e); alert("저장하지 못했어요. 다시 눌러 주세요."); teamTools(); }
+};
+
+// 선택한 팀을 다른 시간대로 옮기기 (잘못된 시간대에 등록했을 때) — 답·비밀번호는 그대로, 팀 이름(A팀…)만 그 시간대에 맞게 새로 붙어요
+$("tMove").onclick = async () => {
+  const sel = fullTeams().filter((t) => A.checked.has(t.id));
+  if (!sel.length) return;
+  if (Object.keys(A.edits).length) return alert("먼저 「바뀐 내용 모두 저장」을 눌러 주세요.");
+  const to = A.session === "am" ? "pm" : "am";
+  if (!confirm(`아래 ${sel.length}팀을 ${SESSIONS[to]}으로 옮길까요? 비밀번호와 낸 답은 그대로예요.\n(이미 로그인한 기기는 한 번 다시 로그인해야 해요)\n\n${sel.map((t) => `${t.label} ${t.school} ${t.name}`).join("\n")}`)) return;
+  $("tMove").disabled = true;
+  try {
+    const [tt, tp] = await Promise.all([
+      getDocs(query(collection(db, C.teams), where("session", "==", to))),
+      getDocs(query(collection(db, C.teamsPrivate), where("session", "==", to)))
+    ]);
+    let idx = -1; tt.forEach((d) => { idx = Math.max(idx, d.data().labelIndex ?? -1); });
+    const there = []; tp.forEach((d) => there.push(d.data()));
+    let n = 0; const skip = [];
+    for (const t of [...sel].sort((a, b) => a.labelIndex - b.labelIndex)) {
+      const p = A.priv[t.id];
+      if (!p) continue;
+      if (there.some((x) => x.school === p.school && x.name === p.name)) { skip.push(`${p.school} ${p.name}`); continue; }
+      idx++;
+      const label = labelOf(idx);
+      const key = await loginKey(to, p.school, p.name, Number(p.pw));
+      const [ans, pv] = await Promise.all([
+        getDocs(query(collection(db, C.answers), where("teamId", "==", t.id))),
+        getDocs(query(collection(db, C.priv), where("teamId", "==", t.id)))
+      ]);
+      const b = writeBatch(db);
+      b.update(doc(db, C.teams, t.id), { session: to, label, labelIndex: idx, updatedAt: serverTimestamp() });
+      b.set(doc(db, C.teamsPrivate, t.id), { ...p, session: to, label, key });
+      if (p.key) b.delete(doc(db, C.logins, p.key));
+      b.set(doc(db, C.logins, key), { teamId: t.id, session: to });
+      ans.forEach((d) => b.update(d.ref, { session: to, label }));
+      pv.forEach((d) => b.update(d.ref, { session: to, label }));
+      await b.commit();
+      there.push({ school: p.school, name: p.name });
+      delete A.priv[t.id]; A.checked.delete(t.id);
+      n++;
+    }
+    // 두 시간대의 학교 목록을 모두 새로 맞춰요
+    const schoolsOf = (arr) => [...new Set(arr.map((p) => p.school))].sort((a, b) => a.localeCompare(b, "ko"));
+    await setDoc(doc(db, C.schools, to), { list: schoolsOf(there) });
+    await updateSchools();
+    toast(`${n}팀을 ${SESSIONS[to]}으로 옮겼어요.`);
+    if (skip.length) alert(`${SESSIONS[to]}에 이미 같은 학생이 있어서 옮기지 않았어요:\n${skip.join("\n")}`);
+  } catch (e) { console.error(e); alert("옮기지 못한 팀이 있어요. 다시 눌러 주세요."); }
+  teamTools();
 };
 
 // 선택한 팀 삭제
